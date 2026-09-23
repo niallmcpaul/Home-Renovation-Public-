@@ -125,17 +125,28 @@ def timeline_ics(db: Session = Depends(get_db), user: m.User = Depends(require_u
 
 # ---------- Budget ----------
 
+def _bar_pcts(b: dict) -> dict | None:
+    total = b["budget_max"]
+    if not total:
+        return None
+    spent = min(b["spent"], total)
+    committed = min(b["committed"], max(total - spent, 0))
+    available = max(total - spent - committed, 0)
+    return {"spent_pct": spent / total * 100, "committed_pct": committed / total * 100, "available_pct": available / total * 100}
+
+
 @router.get("/budget")
 def budget(request: Request, db: Session = Depends(get_db), user: m.User = Depends(require_user)):
     phases = db.scalars(select(m.Phase).order_by(m.Phase.target_start.is_(None), m.Phase.target_start, m.Phase.id)).all()
     budgets = {p.id: planning.phase_budget(db, p) for p in phases}
+    bars = {p.id: _bar_pcts(budgets[p.id]) for p in phases}
     entries = db.scalars(select(m.SavingsEntry).order_by(m.SavingsEntry.date.desc(), m.SavingsEntry.id.desc())).all()
     pot = planning.savings_pot(db)
     monthly = int(services.get_setting(db, "monthly_saving_target", "0"))
     threshold = int(services.get_setting(db, "quote_threshold", "100000"))
     projection = planning.savings_projection(db)
     return render(
-        request, "budget.html", user, phases=phases, budgets=budgets, entries=entries, pot=pot,
+        request, "budget.html", user, phases=phases, budgets=budgets, bars=bars, entries=entries, pot=pot,
         monthly=monthly, threshold=threshold, projection=projection,
     )
 

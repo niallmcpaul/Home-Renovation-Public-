@@ -1,27 +1,30 @@
 {% extends "base.html" %}
-{% block title %}Timeline{% endblock %}
+{% import "_macros.html" as mc %}
+{% block title %}Timeline – Renovation Tracker{% endblock %}
 {% block content %}
 <h1>Timeline</h1>
 <p><a href="/timeline.ics">Subscribe (.ics)</a></p>
 
 {% for key in months %}
+<section class="card">
 <h2>{{ month_labels[key] }}</h2>
-<div class="card-list">
+<ul class="list">
   {% for it in groups[key] %}
-  <div class="card">
-    <strong>{{ it.title }}</strong>
-    <span class="badge">{{ it.status }}</span>
-    <span class="badge">{{ it.category }}</span>
-    <div>{{ it.planned_start }} &rarr; {{ it.planned_end or '?' }}</div>
+  <li>
+    <a href="/items/{{ it.id }}">{{ it.title }}</a>
+    {{ mc.category_badge(it.category) }}
+    {{ mc.status_badge(it.status) }}
+    <span class="muted">{{ it.planned_start }} &rarr; {{ it.planned_end or '?' }}</span>
     {% if warnings.get(it.id) %}
-    <ul class="warnings">
-      {% for w in warnings[it.id] %}<li>{{ w }}</li>{% endfor %}
+    <ul class="list">
+      {% for w in warnings[it.id] %}<li class="warn">{{ w }}</li>{% endfor %}
     </ul>
     {% endif %}
-  </div>
+  </li>
   {% endfor %}
-</div>
+</ul>
+</section>
 {% else %}
-<p>No items with planned dates yet.</p>
+<p class="muted">No items with planned dates yet.</p>
 {% endfor %}
 {% endblock %}
