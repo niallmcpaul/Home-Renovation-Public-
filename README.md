@@ -138,7 +138,7 @@ Tunnel instead of Funnel, pointed at the same port 8001. See
 
 Now add the connector in Claude:
 
-1. Go to claude.ai → Settings → Connectors → Add custom connector.
+1. Go to claude.ai → Customize → Connectors (older layouts: Settings → Connectors) → Add custom connector.
 2. Enter `<your PUBLIC_BASE_URL>/mcp` as the URL.
 3. Sign in with your app account when prompted.
 
