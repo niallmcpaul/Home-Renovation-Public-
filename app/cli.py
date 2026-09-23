@@ -51,8 +51,7 @@ def cmd_adduser(username: str, display_name: str):
         username = username.strip().lower()
         if db.scalar(select(m.User).where(m.User.username == username)):
             sys.exit(f"User '{username}' already exists.")
-        create(db, Actor(user_id=None), m.User, username=username, display_name=display_name,
-               password_hash=hash_password(pw1))
+        db.add(m.User(username=username, display_name=display_name, password_hash=hash_password(pw1)))
         db.commit()
         print(f"User '{username}' created.")
     finally:
@@ -72,7 +71,7 @@ def cmd_passwd(username: str):
         user = db.scalar(select(m.User).where(m.User.username == username))
         if not user:
             sys.exit(f"User '{username}' not found.")
-        update(db, Actor(user_id=user.id), user, {"password_hash": hash_password(pw1)})
+        user.password_hash = hash_password(pw1)
         db.commit()
         print(f"Password updated for '{username}'.")
     finally:

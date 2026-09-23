@@ -9,6 +9,7 @@
 </head>
 <body>
 <header class="topbar">
+  {% if user %}
   <nav class="nav">
     <a href="/" class="brand">Reno Tracker</a>
     <a href="/">Dashboard</a>
@@ -23,6 +24,9 @@
   <form method="post" action="/quick-add" class="quick-add">
     <input type="text" name="title" placeholder="Quick add a wish… press Enter" autocomplete="off" required>
   </form>
+  {% else %}
+  <div class="brand">Reno Tracker</div>
+  {% endif %}
 </header>
 {% set msg = request.query_params.get('msg') %}
 {% if msg %}<div class="flash">{{ msg }}</div>{% endif %}
