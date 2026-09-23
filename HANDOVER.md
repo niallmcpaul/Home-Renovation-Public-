@@ -42,10 +42,10 @@ export DATA_DIR=./data SECRET_KEY=dev
 |---|---|---|
 | 1. Core | Done | Seeded DB; every UI page returns 200 at 390px width in headless Chromium with no JS errors |
 | 2. Quotes and people | Done | Scripted TestClient runs: quote add/accept, contractor CRUD, photo upload with downscale, notes |
-| 3. Planning | Done (timeline is a month-grouped list, no Gantt bars) | Unit tests for cycles, budget, next actions, quote nudge, savings projection; `.ics` feed checked for CRLF and escaping |
+| 3. Planning | Done, including a CSS Gantt on the timeline and a "choose this option" action for decision groups (web and MCP) | Unit tests for cycles, budget, next actions, quote nudge, savings projection; `.ics` feed checked for CRLF and escaping; Gantt checked by screenshot at 390px |
 | 4. MCP | Done, not yet tested with MCP Inspector or claude.ai | `tests/test_public.py` runs the full OAuth flow (DCR, PKCE, login, code exchange, refresh rotation, revoke) then `tools/list` and `create_items` over `/mcp` |
 | 5. Networking | Not started: needs your PC | README steps 5-6 cover Tailscale, Funnel and the connector |
-| 6. Operations | Done except a real restore test on your machine | Backup/restore round trip tested in the container; seed loads 24 items and 22 dependencies |
+| 6. Operations | Done except a real restore test on your machine | Docker image built and run here: `init`, `seed` and `backup` work in the container, UI answers on 8000, `/mcp` returns 401 without a token, the public port serves no UI. Backup/restore round trip tested; seed loads 24 items and 22 dependencies |
 
 ## Known gaps and decisions taken without you
 
@@ -60,8 +60,14 @@ export DATA_DIR=./data SECRET_KEY=dev
 - **No CSRF tokens** on the private UI; it relies on `SameSite=Lax` cookies and tailnet-only reach, as PLAN §9 specifies.
 - **HEIC photos** (iPhone default) are accepted but not downscaled; stock Pillow cannot decode HEIC. Adding `pillow-heif` would fix it.
 - **Backups run in a second container** on a 24-hour sleep loop, not at a fixed time of night. On Windows, keep the repo inside the WSL2 filesystem: SQLite WAL on a Windows-mounted folder is unreliable.
-- **Timeline** is a month-grouped list with dependency warnings; no Gantt bars.
-- Tests pass on Python 3.11 locally and 3.12 in GitHub Actions (the Docker image uses 3.12). The Docker image itself has not been built yet.
+- **The `data` and `rclone` folders ship in the repo (empty)**. If Docker creates `./data` itself it is owned by root and the container's non-root user cannot write the database (`unable to open database file`). This happened in testing. If you hit it on Linux: `sudo chown -R 1000:1000 data rclone`.
+- **rclone in the image is untested here.** The Dockerfile installs Debian's `rclone` package, but this sandbox could not reach the Debian mirrors to confirm. If `RCLONE_REMOTE` is set and the copy fails, the backup still completes locally and prints a warning.
+- Tests pass on Python 3.11 locally and 3.12 in GitHub Actions.
+
+## Review passes run at the end of the sprint
+
+- **Security (public side):** fixed username enumeration via Argon2 timing, unbounded growth of the lockout table, a client-name spoofing risk on the OAuth sign-in page (it now shows the redirect host), upload serving headers (`nosniff`, CSP sandbox), and hardened the login `next` redirect. Confirmed sound: exact redirect-URI matching, PKCE, single-use codes and refresh tokens, hashed expiring tokens, no hard delete over MCP. Not changed: open DCR (Claude needs it); no CSRF token on the OAuth login form (a password is always required).
+- **Correctness (private side):** items blocked only by archived items no longer count as blocked; accepting a quote now advances the item to `approved`; removed N+1 queries in budget and quote-nudge calculations; savings projection table readable on a phone.
 
 ## Still to resolve with the owners (PLAN §15)
 
@@ -74,7 +80,7 @@ export DATA_DIR=./data SECRET_KEY=dev
 ## Suggested next session
 
 1. On the PC: follow README steps 1-4, create both accounts, open the UI over Tailscale from a phone.
-2. Build the Docker image once (`docker compose build`) and fix anything 3.12-specific.
+2. Build the image on the PC (`docker compose build`). It built and ran in the sandbox before the `rclone` install line was added; that line is unverified.
 3. Run MCP Inspector against `http://localhost:8001/mcp` (`npx @modelcontextprotocol/inspector`) to check the OAuth flow and tools by hand.
 4. Set up Funnel on port 8001, set `PUBLIC_BASE_URL`, restart, and add the connector in claude.ai.
 5. End-to-end test: upload `docs/mock-survey.md` (a fictional survey written for this purpose) to a Claude conversation and ask Claude to import the defects. They should appear in the dashboard's "Proposed by Claude" inbox.
