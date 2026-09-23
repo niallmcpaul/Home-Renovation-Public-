@@ -4,7 +4,7 @@ import json
 import secrets
 import time
 from datetime import datetime, timezone
-from urllib.parse import urlencode
+from urllib.parse import urlencode, urlsplit
 
 from mcp.server.auth.provider import (
     AccessToken, AuthorizationCode, AuthorizationParams, AuthorizeError, RefreshToken, TokenError,
@@ -181,7 +181,7 @@ _PAGE = """<!doctype html><html lang="en"><head><meta charset="utf-8">
 input,button{{width:100%;padding:.6rem;margin:.3rem 0;font-size:1rem;box-sizing:border-box}}
 button{{background:#2d5a3d;color:#fff;border:0;border-radius:4px}}.err{{color:#b00020}}</style></head>
 <body><h1>Renovation Tracker</h1><p><strong>{client}</strong> wants to read and edit your renovation data.</p>
-{error}<form method="post"><input type="hidden" name="req" value="{req}">
+{dest}{error}<form method="post"><input type="hidden" name="req" value="{req}">
 <input name="username" placeholder="Username" autocomplete="username" required autofocus>
 <input name="password" type="password" placeholder="Password" autocomplete="current-password" required>
 <button>Sign in and allow</button></form></body></html>"""
@@ -194,9 +194,11 @@ async def _client_name(client_id: str) -> str:
     return (client and client.client_name) or "An application"
 
 
-def _page(req: str, client: str, error: str = "", status: int = 200) -> HTMLResponse:
+def _page(req: str, client: str, error: str = "", status: int = 200, dest: str = "") -> HTMLResponse:
     err = f'<p class="err">{html.escape(error)}</p>' if error else ""
-    body = _PAGE.format(client=html.escape(client), req=html.escape(req), error=err)
+    # client_name is self-asserted via open registration; show where access is actually granted.
+    dest = f"<p>Access will be sent to <strong>{html.escape(dest)}</strong>.</p>" if dest else ""
+    body = _PAGE.format(client=html.escape(client), req=html.escape(req), error=err, dest=dest)
     return HTMLResponse(body, status_code=status, headers=_HEADERS)
 
 
@@ -207,14 +209,15 @@ async def login_endpoint(request: Request):
     if not entry or entry[0] < time.time():
         return _page("", "Unknown", "This sign-in link has expired. Start the connection again from Claude.", 400)
     client = await _client_name(entry[1])
+    dest = urlsplit(str(entry[2].redirect_uri)).netloc or str(entry[2].redirect_uri)
     if request.method == "GET":
-        return _page(rid, client)
+        return _page(rid, client, dest=dest)
     username = str(params.get("username") or "")
     ip = request.client.host if request.client else "unknown"
     with _session() as db:
         user = authenticate(db, username, str(params.get("password") or ""), f"{ip}:{username.strip().lower()}")
         if not user:
-            return _page(rid, client, "Invalid username or password, or too many attempts.", 401)
+            return _page(rid, client, "Invalid username or password, or too many attempts.", 401, dest)
         url = complete_authorization(db, rid, user.id)
     if not url:
         return _page("", client, "This sign-in link has expired. Start the connection again from Claude.", 400)

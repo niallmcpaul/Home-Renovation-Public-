@@ -10,7 +10,9 @@ router = APIRouter()
 
 
 def _safe_next(next: str | None) -> str:
-    return next if next and next.startswith("/") and not next.startswith("//") else "/"
+    ok = next and next.startswith("/") and not next.startswith("//") and "\\" not in next \
+        and not any(ord(c) < 0x21 for c in next)
+    return next if ok else "/"
 
 
 @router.get("/login")

@@ -1,7 +1,7 @@
 from datetime import date, timedelta
 
 from sqlalchemy import func, select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 
 from app import models as m
 from app import services
@@ -13,7 +13,7 @@ def blocked_ids(db: Session) -> set[int]:
     rows = db.scalars(
         select(m.Dependency.blocked_item_id)
         .join(m.Item, m.Item.id == m.Dependency.blocker_item_id)
-        .where(m.Item.status != "done")
+        .where(m.Item.status.notin_(("done", "archived")))
     )
     return set(rows)
 
@@ -47,7 +47,9 @@ def blocked_by_me(db: Session, item_id: int) -> list[m.Item]:
 def phase_budget(db: Session, phase) -> dict:
     if isinstance(phase, int):
         phase = db.get(m.Phase, phase)
-    items = list(db.scalars(select(m.Item).where(m.Item.phase_id == phase.id)))
+    items = list(db.scalars(
+        select(m.Item).where(m.Item.phase_id == phase.id).options(selectinload(m.Item.quotes))
+    ))
     committed = 0
     spent = 0
     for it in items:
@@ -113,7 +115,9 @@ def next_actions(db: Session, limit: int = 10) -> list[dict]:
 
 def needs_quotes(db: Session) -> dict[int, int]:
     threshold = int(services.get_setting(db, "quote_threshold", "100000"))
-    items = db.scalars(select(m.Item).where(m.Item.status.notin_(NOT_ACTIVE)))
+    items = db.scalars(
+        select(m.Item).where(m.Item.status.notin_(NOT_ACTIVE)).options(selectinload(m.Item.quotes))
+    )
     out = {}
     for it in items:
         if it.estimate_high is None or it.estimate_high < threshold:

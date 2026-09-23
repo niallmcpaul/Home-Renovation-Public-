@@ -43,6 +43,13 @@ button.btn-secondary { background: var(--gray-bg); color: var(--text); }
 .filters input, .filters select { width: auto; flex: 1 1 140px; margin-top: 0; }
 .filters button { flex: 0 0 auto; }
 .table-scroll { overflow-x: auto; }
+.proj-table td:first-child { white-space: normal; word-break: break-word; }
+@media (max-width: 480px) {
+  .proj-table { table-layout: fixed; }
+  .proj-table td:first-child, .proj-table th:first-child { width: 46%; }
+  .proj-table td:nth-child(2), .proj-table th:nth-child(2) { width: 20%; }
+  .proj-table td:nth-child(3), .proj-table th:nth-child(3) { width: 34%; white-space: normal; }
+}
 table { width: 100%; border-collapse: collapse; font-size: .9rem; }
 th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--border); white-space: nowrap; }
 tr.warn { background: var(--yellow-bg); }

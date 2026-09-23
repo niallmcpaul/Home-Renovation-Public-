@@ -172,6 +172,9 @@ def accept_quote(db: Session, actor: Actor, quote: m.Quote) -> list[m.Quote]:
             update(db, actor, q, {"status": "declined"})
             declined.append(q)
     update(db, actor, quote, {"status": "accepted"})
+    item = quote.item
+    if m.STATUSES.index(item.status) < m.STATUSES.index("approved"):
+        update(db, actor, item, {"status": "approved"})
     return declined
 
 

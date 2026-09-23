@@ -394,7 +394,8 @@ def serve_upload(attachment_id: int, user: m.User = Depends(require_user), db: S
     path = config.UPLOAD_DIR / att.stored_path
     if not path.exists():
         raise HTTPException(404)
-    return FileResponse(path, media_type=att.mime_type, filename=att.filename)
+    return FileResponse(path, media_type=att.mime_type, filename=att.filename,
+                        headers={"X-Content-Type-Options": "nosniff", "Content-Security-Policy": "sandbox"})
 
 
 @router.post("/items/{item_id}/notes")

@@ -141,3 +141,20 @@ def test_full_oauth_flow_and_tools(client):
     r = client.post("/mcp", headers={**h, "Authorization": f"Bearer {ref.json()['access_token']}"},
                     json={"jsonrpc": "2.0", "id": 4, "method": "tools/list"})
     assert r.status_code == 401
+
+
+def test_oauth_login_escapes_shows_destination_and_locks_out(client, monkeypatch):
+    from collections import defaultdict
+    monkeypatch.setattr(auth, "_failures", defaultdict(list))
+    evil = "https://evil.example/cb"
+    reg = client.post("/register", json={"client_name": "<script>alert(1)</script>", "redirect_uris": [evil],
+                                         "token_endpoint_auth_method": "none"})
+    cid = reg.json()["client_id"]
+    r = client.get("/authorize", params={"response_type": "code", "client_id": cid, "redirect_uri": evil,
+                                         "code_challenge": "x" * 43, "code_challenge_method": "S256"})
+    req = parse_qs(urlparse(r.headers["location"]).query)["req"][0]
+    page = client.get("/oauth/login", params={"req": req}).text
+    assert "<script>" not in page and "&lt;script&gt;" in page and "evil.example" in page
+    for _ in range(auth.MAX_FAILURES):
+        assert client.post("/oauth/login", data={"req": req, "username": "alice", "password": "no"}).status_code == 401
+    assert client.post("/oauth/login", data={"req": req, "username": "alice", "password": "pw-alice"}).status_code == 401
