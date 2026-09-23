@@ -10,7 +10,7 @@ from app import models as m
 
 _ph = PasswordHasher()
 _failures: dict[str, list[float]] = defaultdict(list)
-MAX_FAILURES, WINDOW, LOCKOUT = 5, 900, 900
+MAX_FAILURES, WINDOW, LOCKOUT = 10, 900, 900
 
 
 def hash_password(pw: str) -> str:
@@ -24,15 +24,19 @@ def locked_out(key: str) -> bool:
 
 
 def authenticate(db: Session, username: str, password: str, key: str) -> m.User | None:
-    """key identifies the client for rate limiting, e.g. f'{ip}:{username}'."""
-    if locked_out(key):
+    """key identifies the client for rate limiting, e.g. f'{ip}:{username}'. A per-username key also applies,
+    since forwarded client IPs can be spoofed or collapse to the proxy address."""
+    username = username.strip().lower()
+    keys = (key, f"user:{username}")
+    if any(locked_out(k) for k in keys):
         return None
-    user = db.scalar(select(m.User).where(m.User.username == username.strip().lower()))
+    user = db.scalar(select(m.User).where(m.User.username == username))
     try:
         if user and _ph.verify(user.password_hash, password):
             _failures.pop(key, None)
             return user
     except VerifyMismatchError:
         pass
-    _failures[key].append(time.time())
+    for k in keys:
+        _failures[k].append(time.time())
     return None
