@@ -5,6 +5,7 @@ from uuid import uuid4
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile
 from fastapi.responses import FileResponse, RedirectResponse
+import pillow_heif
 from PIL import Image, ImageOps
 from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
@@ -12,6 +13,8 @@ from sqlalchemy.orm import Session
 from app import config, models as m, planning, services
 from app.db import get_db
 from app.web.common import actor, get_or_404, render, require_user, templates, to_pence
+
+pillow_heif.register_heif_opener()
 
 router = APIRouter(dependencies=[Depends(require_user)])
 
@@ -397,8 +400,12 @@ async def add_attachment(item_id: int, kind: str = Form("photo"), file: UploadFi
             img = ImageOps.exif_transpose(img)
             img.thumbnail((2000, 2000))
             buf = io.BytesIO()
-            fmt = "JPEG" if ext == "jpg" else ext.upper()
-            img.save(buf, format=fmt)
+            if ext in ("heic", "heif"):
+                mime, ext = "image/jpeg", "jpg"
+                img.convert("RGB").save(buf, format="JPEG", quality=85)
+            else:
+                fmt = "JPEG" if ext == "jpg" else ext.upper()
+                img.save(buf, format=fmt)
             data = buf.getvalue()
         except Exception:
             pass
