@@ -1,6 +1,6 @@
 # Handover: Renovation Tracker build sprint (23 Sep 2026)
 
-Built in one 45-minute cloud session against `PLAN.md` (the original build plan, copied into the repo). This file records what exists, what was verified, what was not, and where to pick up.
+Built in one 35-minute cloud session (15:16-15:50 BST) against `PLAN.md` (the original build plan, copied into the repo). This file records what exists, what was verified, what was not, and where to pick up.
 
 ## Getting this onto your machine
 
@@ -67,7 +67,7 @@ export DATA_DIR=./data SECRET_KEY=dev
 
 ## Added beyond the plan
 
-- **Grouped undo:** actions that change several records undo together (e.g. "Undo (4 changes)" after accepting a quote). Needs the second Alembic migration (`b7c1d2e3f4a5`); a fresh `init` already includes it.
+- **Grouped undo:** actions that change several records undo together (e.g. "Undo (4 changes)" after accepting a quote). Uses the second Alembic migration (`b7c1d2e3f4a5`), applied automatically at startup.
 - **Confirm all** button on the dashboard's "Proposed by Claude" inbox, for survey imports.
 - **`choose_option`** for decision groups: parks the alternatives. In the web UI and as an MCP tool.
 - MCP `list_items` accepts `source`, and the server instructions tell Claude to check for an earlier import before importing a survey, to avoid duplicates.
