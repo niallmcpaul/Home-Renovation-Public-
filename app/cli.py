@@ -12,7 +12,6 @@ from app.auth import hash_password
 from app.backup import backup, export_json, restore
 from app.db import SessionLocal, init_db
 from app.seed import seed as seed_db
-from app.services import Actor, create, update
 
 ROOT = Path(__file__).resolve().parent.parent
 
