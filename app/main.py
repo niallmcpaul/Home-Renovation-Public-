@@ -9,7 +9,6 @@ from fastapi.staticfiles import StaticFiles
 from starlette.middleware.sessions import SessionMiddleware
 
 from app import config
-from app.db import init_db
 from app.web.common import LoginRequired
 
 WEB_MODULES = ("app.web.account", "app.web.items", "app.web.pages")
@@ -31,8 +30,9 @@ def build_private_app() -> FastAPI:
 
 
 async def serve():
+    from app.cli import migrate
     from app.public import build_public_app
-    init_db()
+    migrate()
     servers = [
         uvicorn.Server(uvicorn.Config(build_private_app(), host=config.PRIVATE_HOST, port=config.PRIVATE_PORT, proxy_headers=False)),
         uvicorn.Server(uvicorn.Config(build_public_app(), host=config.PUBLIC_HOST, port=config.PUBLIC_PORT,

@@ -43,7 +43,7 @@ export DATA_DIR=./data SECRET_KEY=dev
 | 1. Core | Done | Seeded DB; every UI page returns 200 at 390px width in headless Chromium with no JS errors |
 | 2. Quotes and people | Done | Scripted TestClient runs: quote add/accept, contractor CRUD, photo upload with downscale, notes |
 | 3. Planning | Done, including a CSS Gantt on the timeline and a "choose this option" action for decision groups (web and MCP) | Unit tests for cycles, budget, next actions, quote nudge, savings projection; `.ics` feed checked for CRLF and escaping; Gantt checked by screenshot at 390px |
-| 4. MCP | Done, not yet tested with MCP Inspector or claude.ai | `tests/test_public.py` runs the full OAuth flow (DCR, PKCE, login, code exchange, refresh rotation, revoke) then `tools/list` and `create_items` over `/mcp` |
+| 4. MCP | Done; not yet tried from claude.ai | `tests/test_public.py` runs the full OAuth flow (DCR, PKCE, login, code exchange, refresh rotation, revoke) then `tools/list` and `create_items`. Separately, a live test over real HTTP with the official MCP client imported 5 defects from `docs/mock-survey.md` and confirmed they appear in the dashboard inbox (19/19 steps) |
 | 5. Networking | Not started: needs your PC | README steps 5-6 cover Tailscale, Funnel and the connector |
 | 6. Operations | Done except a real restore test on your machine | Docker image built and run here: `init`, `seed` and `backup` work in the container, UI answers on 8000, `/mcp` returns 401 without a token, the public port serves no UI. Backup/restore round trip tested; seed loads 24 items and 22 dependencies |
 
@@ -56,7 +56,8 @@ export DATA_DIR=./data SECRET_KEY=dev
 - **Host check on `/mcp`.** Only the host in `PUBLIC_BASE_URL` (plus localhost) is accepted, so `PUBLIC_BASE_URL` must match the Funnel URL exactly or every call is refused.
 - **Seed phase assignment (assumption).** Loft, all garage items, solar, external wall insulation and kitchen refit are in "Later"; everything else is in "Phase 1". The garage Lawful Development Certificate and CCTV drainage survey are cheap enabling tasks and arguably belong in Phase 1; move them in the UI if you agree.
 - **Repaint estimate** seeded as £3,450–£7,500 (labour plus 15–25% materials), with the raw wording in the description.
-- **Schema management.** `app.cli init` runs `create_all` and stamps Alembic head. Future model changes need an Alembic migration (`alembic revision --autogenerate`).
+- **Schema management.** The app runs `alembic upgrade head` on every start (a fresh database is created and stamped instead), so pulling new code and restarting is enough. Model changes need an Alembic migration (`alembic revision --autogenerate`). The live test found this gap: before the fix, an existing database missed a new column and every MCP write failed.
+- **MCP error reporting.** Unexpected server errors now return their type and message to Claude, labelled as server-side, instead of a bare "Error executing tool".
 - **No CSRF tokens** on the private UI; it relies on `SameSite=Lax` cookies and tailnet-only reach, as PLAN §9 specifies.
 - **HEIC photos** (iPhone default) are converted to JPEG on upload via `pillow-heif`, so every browser can show them.
 - **Backups run in a second container** on a 24-hour sleep loop, not at a fixed time of night. On Windows, keep the repo inside the WSL2 filesystem: SQLite WAL on a Windows-mounted folder is unreliable.
@@ -88,7 +89,7 @@ export DATA_DIR=./data SECRET_KEY=dev
 
 1. On the PC: follow README steps 1-4, create both accounts, open the UI over Tailscale from a phone.
 2. Build the image on the PC (`docker compose build`). It built and ran in the sandbox before the `rclone` install line was added; that line is unverified.
-3. Run MCP Inspector against `http://localhost:8001/mcp` (`npx @modelcontextprotocol/inspector`) to check the OAuth flow and tools by hand.
+3. Optional: MCP Inspector against `http://localhost:8001/mcp` (`npx @modelcontextprotocol/inspector`) to browse the tools by hand.
 4. Set up Funnel on port 8001, set `PUBLIC_BASE_URL`, restart, and add the connector in claude.ai.
 5. End-to-end test: upload `docs/mock-survey.md` (a fictional survey written for this purpose) to a Claude conversation and ask Claude to import the defects. They should appear in the dashboard's "Proposed by Claude" inbox.
 6. Run a real backup and restore test (README "Backups").

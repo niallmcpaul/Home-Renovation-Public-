@@ -1,4 +1,5 @@
 import functools
+import logging
 import json
 from contextlib import contextmanager
 from datetime import datetime, timezone
@@ -71,6 +72,9 @@ def _safe(fn):
             out = {"error": f"Invalid reference or duplicate: {e.orig}"}
         except ValueError as e:
             out = {"error": f"Invalid value: {e}"}
+        except Exception as e:
+            logging.exception("MCP tool %s failed", fn.__name__)
+            out = {"error": f"Server error in {fn.__name__} ({type(e).__name__}): {e}. Not caused by your arguments; tell the user."}
         return json.dumps(out, separators=(",", ":"), default=str)
     wrapper.__annotations__ = {**fn.__annotations__, "return": str}
     return wrapper

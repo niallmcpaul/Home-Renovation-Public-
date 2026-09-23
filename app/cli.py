@@ -23,10 +23,19 @@ def _alembic_config() -> Config:
     return cfg
 
 
+def migrate():
+    from sqlalchemy import inspect as sa_inspect
+    from app.db import engine
+    if "alembic_version" in sa_inspect(engine).get_table_names():
+        command.upgrade(_alembic_config(), "head")
+    else:
+        init_db()
+        command.stamp(_alembic_config(), "head")
+
+
 def cmd_init():
-    init_db()
-    command.stamp(_alembic_config(), "head")
-    print("Database initialised and stamped at head.")
+    migrate()
+    print("Database initialised and migrated to head.")
 
 
 def cmd_seed():
