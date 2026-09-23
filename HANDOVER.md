@@ -61,7 +61,7 @@ export DATA_DIR=./data SECRET_KEY=dev
 - **HEIC photos** (iPhone default) are accepted but not downscaled; stock Pillow cannot decode HEIC. Adding `pillow-heif` would fix it.
 - **Backups run in a second container** on a 24-hour sleep loop, not at a fixed time of night. On Windows, keep the repo inside the WSL2 filesystem: SQLite WAL on a Windows-mounted folder is unreliable.
 - **Timeline** is a month-grouped list with dependency warnings; no Gantt bars.
-- Development here ran on Python 3.11; the Docker image uses 3.12. Not yet built with Docker.
+- Tests pass on Python 3.11 locally and 3.12 in GitHub Actions (the Docker image uses 3.12). The Docker image itself has not been built yet.
 
 ## Still to resolve with the owners (PLAN §15)
 
