@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block title %}Timeline{% endblock %}
+{% block content %}
+<h1>Timeline</h1>
+<p><a href="/timeline.ics">Subscribe (.ics)</a></p>
+
+{% for key in months %}
+<h2>{{ month_labels[key] }}</h2>
+<div class="card-list">
+  {% for it in groups[key] %}
+  <div class="card">
+    <strong>{{ it.title }}</strong>
+    <span class="badge">{{ it.status }}</span>
+    <span class="badge">{{ it.category }}</span>
+    <div>{{ it.planned_start }} &rarr; {{ it.planned_end or '?' }}</div>
+    {% if warnings.get(it.id) %}
+    <ul class="warnings">
+      {% for w in warnings[it.id] %}<li>{{ w }}</li>{% endfor %}
+    </ul>
+    {% endif %}
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<p>No items with planned dates yet.</p>
+{% endfor %}
+{% endblock %}

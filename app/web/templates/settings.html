@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% block title %}Settings{% endblock %}
+{% block content %}
+<h1>Settings</h1>
+{% if msg %}<p class="card">{{ msg }}</p>{% endif %}
+
+<h2>Rooms</h2>
+{% for r in rooms %}
+<form method="post" action="/settings/rooms/{{ r.id }}" class="room-row">
+  <input name="name" value="{{ r.name }}" required>
+  <input name="sort_order" type="number" value="{{ r.sort_order }}" style="width:5rem">
+  <button type="submit">Save</button>
+</form>
+{% else %}
+<p>No rooms yet.</p>
+{% endfor %}
+
+<h3>Add room</h3>
+<form method="post" action="/settings/rooms" class="room-row">
+  <input name="name" placeholder="Room name" required>
+  <input name="sort_order" type="number" value="0" style="width:5rem">
+  <button type="submit">Add</button>
+</form>
+
+<h2>Export</h2>
+<p><a href="/settings/export.json">Download JSON export</a></p>
+
+<h2>Connected apps</h2>
+{% if clients is none %}
+<p>Not available yet.</p>
+{% elif clients %}
+<table>
+  <tr><th>Client</th><th></th></tr>
+  {% for cl in clients %}
+  <tr>
+    <td>{{ cl.client_name }}</td>
+    <td>
+      <form method="post" action="/settings/clients/{{ cl.client_id }}/revoke">
+        <button type="submit">Revoke</button>
+      </form>
+    </td>
+  </tr>
+  {% endfor %}
+</table>
+{% else %}
+<p>No connected apps.</p>
+{% endif %}
+
+<h2>Change password</h2>
+<form method="post" action="/settings/password">
+  <label>Current password <input type="password" name="current_password" required></label>
+  <label>New password <input type="password" name="new_password" required></label>
+  <label>Repeat new password <input type="password" name="new_password2" required></label>
+  <button type="submit">Change password</button>
+</form>
+
+<style>
+.room-row { display: flex; gap: .5rem; align-items: center; margin-bottom: .5rem; }
+</style>
+{% endblock %}

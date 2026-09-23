@@ -1,4 +1,4 @@
-import json
+import os
 import shutil
 import sqlite3
 import subprocess
@@ -10,7 +10,6 @@ from sqlalchemy import inspect, select
 from sqlalchemy.orm import Session
 
 from app import config, models as m
-from app.db import make_engine
 
 EXCLUDE_TABLES = {"users", "oauth_clients", "oauth_codes", "oauth_tokens"}
 KEEP_DAILY, KEEP_MONTHLY = 14, 12
@@ -46,7 +45,7 @@ def backup(dest_dir: Path | str) -> Path:
 
     _apply_retention(dest_dir)
 
-    remote = __import__("os").environ.get("RCLONE_REMOTE")
+    remote = os.environ.get("RCLONE_REMOTE")
     if remote:
         subprocess.run(["rclone", "copy", str(archive), remote], check=False)
 

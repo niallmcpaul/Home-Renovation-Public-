@@ -95,7 +95,8 @@ class DBOAuthProvider:
             return AuthorizationCode(code=code, client_id=row.client_id, expires_at=_ts(row.expires_at),
                                      subject=str(row.user_id), **json.loads(row.data_json))
 
-    async def exchange_authorization_code(self, client: OAuthClientInformationFull, code: AuthorizationCode) -> OAuthToken:
+    async def exchange_authorization_code(self, client: OAuthClientInformationFull,
+                                          code: AuthorizationCode) -> OAuthToken:
         with _session() as db:
             if not db.execute(delete(m.OAuthCode).where(m.OAuthCode.code_hash == _hash(code.code))).rowcount:
                 raise TokenError("invalid_grant", "authorization code already used")
@@ -135,9 +136,6 @@ class DBOAuthProvider:
                     m.OAuthToken.client_id == row.client_id, m.OAuthToken.user_id == row.user_id,
                 ).values(revoked=True))
                 db.commit()
-
-    async def exchange_identity_assertion(self, client, params) -> OAuthToken:
-        raise TokenError("unsupported_grant_type", "Not supported")
 
 
 def complete_authorization(db: Session, rid: str, user_id: int) -> str | None:

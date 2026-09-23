@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block title %}Contractors{% endblock %}
+{% block content %}
+<h1>Contractors</h1>
+
+<form method="get" action="/contractors">
+  <input type="text" name="q" value="{{ q }}" placeholder="Search name or trade">
+  <button type="submit">Search</button>
+</form>
+
+<div class="card-list">
+  {% for c in contractors %}
+  <a class="card" href="/contractors/{{ c.id }}">
+    <strong>{{ c.name }}</strong>{% if c.company %} &mdash; {{ c.company }}{% endif %}
+    {% if c.trades %}<div>{{ c.trades }}</div>{% endif %}
+    <span class="badge">{{ c.rating or '–' }}/5</span>
+    {% if c.insurance_checked %}<span class="badge">Insured</span>{% endif %}
+  </a>
+  {% else %}
+  <p>No contractors yet.</p>
+  {% endfor %}
+</div>
+
+<h2>Add contractor</h2>
+<form method="post" action="/contractors">
+  <label>Name <input name="name" required></label>
+  <label>Company <input name="company"></label>
+  <label>Trades <input name="trades" placeholder="e.g. electrician, plumber"></label>
+  <label>Phone <input name="phone"></label>
+  <label>Email <input name="email" type="email"></label>
+  <label>Website <input name="website"></label>
+  <label>Recommended by <input name="recommended_by"></label>
+  <label>Registrations <input name="registrations" placeholder="Gas Safe, NICEIC..."></label>
+  <label><input type="checkbox" name="insurance_checked"> Insurance checked</label>
+  <label>Rating (1-5) <input name="rating" type="number" min="1" max="5"></label>
+  <label>Notes <textarea name="notes"></textarea></label>
+  <button type="submit">Add contractor</button>
+</form>
+{% endblock %}

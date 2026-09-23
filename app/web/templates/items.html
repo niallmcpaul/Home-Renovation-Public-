@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% import "_macros.html" as mc %}
+{% block title %}Items – Renovation Tracker{% endblock %}
+{% block content %}
+<h1>Items</h1>
+<form method="get" action="/items" class="filters">
+  <input type="text" name="q" value="{{ f.q }}" placeholder="Search title or description">
+  <select name="status">
+    <option value="">Any status</option>
+    {% for s in STATUSES %}<option value="{{ s }}" {% if f.status==s %}selected{% endif %}>{{ s }}</option>{% endfor %}
+  </select>
+  <select name="category">
+    <option value="">Any category</option>
+    {% for c in CATEGORIES %}<option value="{{ c }}" {% if f.category==c %}selected{% endif %}>{{ c }}</option>{% endfor %}
+  </select>
+  <select name="size">
+    <option value="">Any size</option>
+    {% for s in SIZES %}<option value="{{ s }}" {% if f.size==s %}selected{% endif %}>{{ s }}</option>{% endfor %}
+  </select>
+  <select name="room_id">
+    <option value="">Any room</option>
+    {% for r in rooms %}<option value="{{ r.id }}" {% if f.room_id==r.id|string %}selected{% endif %}>{{ r.name }}</option>{% endfor %}
+  </select>
+  <select name="phase_id">
+    <option value="">Any phase</option>
+    {% for p in phases %}<option value="{{ p.id }}" {% if f.phase_id==p.id|string %}selected{% endif %}>{{ p.name }}</option>{% endfor %}
+  </select>
+  <select name="sort">
+    <option value="next" {% if f.sort=='next' %}selected{% endif %}>Next actions order</option>
+    <option value="updated" {% if f.sort=='updated' %}selected{% endif %}>Recently updated</option>
+    <option value="estimate" {% if f.sort=='estimate' %}selected{% endif %}>Estimate</option>
+    <option value="title" {% if f.sort=='title' %}selected{% endif %}>Title</option>
+  </select>
+  <button type="submit">Filter</button>
+</form>
+
+<div class="table-scroll">
+<table>
+  <thead><tr><th>Title</th><th>Category</th><th>Status</th><th>Room</th><th>Estimate</th><th>Flags</th></tr></thead>
+  <tbody>
+  {% for it in items %}
+  <tr>
+    <td><a href="/items/{{ it.id }}">{{ it.title }}</a></td>
+    <td>{{ mc.category_badge(it.category) }}</td>
+    <td>{{ mc.status_badge(it.status) }}</td>
+    <td>{{ it.room.name if it.room else '–' }}</td>
+    <td>{{ it.estimate_low|money }}–{{ it.estimate_high|money }}</td>
+    <td>
+      {{ mc.blocked_badge(it.id in blocked_set) }}
+      {{ mc.blocks_badge(counts.get(it.id, 0)) }}
+      {{ mc.needs_quotes_badge(nq.get(it.id)) }}
+    </td>
+  </tr>
+  {% else %}
+  <tr><td colspan="6" class="muted">No items match.</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+{% endblock %}

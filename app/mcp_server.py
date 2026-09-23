@@ -1,18 +1,18 @@
 import functools
 import json
 from contextlib import contextmanager
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any
 
 from mcp.server.auth.middleware.auth_context import get_access_token
 from mcp.server.mcpserver import MCPServer
+from mcp.types import ToolAnnotations
 from sqlalchemy import or_, select
 from sqlalchemy.exc import IntegrityError
 
 from app import db as dbm, models as m, services as s
 
 NOISE = {"created_by", "updated_by"}
-ITEM_FIELDS = set(s.columns(m.Item)) - s.READONLY
 
 INSTRUCTIONS = f"""Renovation tracker for a Victorian end-terrace house (Bristol), shared by two householders.
 
@@ -35,6 +35,10 @@ surveyor flags safety or structural issues, otherwise enabling/improvement as ap
 wording in description and any Building Control / specialist requirements in compliance_notes. Items arrive as \
 `proposed` for a human to confirm or discard in the dashboard inbox. Summarise what you created afterwards.
 Before accept_quote, confirm with the user: it declines the item's other open quotes."""
+
+VOCAB = (f"\nstatus: {'|'.join(m.STATUSES)} (proposed = suggested by Claude, awaiting human confirmation in the "
+         f"dashboard inbox). category: {'|'.join(m.CATEGORIES)}. size: {'|'.join(m.SIZES)}. "
+         f"source: {'|'.join(m.SOURCES)}. Money is integer pence; dates ISO 8601.")
 
 
 def _actor() -> s.Actor:
@@ -59,13 +63,15 @@ def _safe(fn):
     @functools.wraps(fn)
     def wrapper(*args, **kwargs):
         try:
-            return fn(*args, **kwargs)
+            out = fn(*args, **kwargs)
         except s.ServiceError as e:
-            return {"error": str(e)}
+            out = {"error": str(e)}
         except IntegrityError as e:
-            return {"error": f"Invalid reference or duplicate: {e.orig}"}
+            out = {"error": f"Invalid reference or duplicate: {e.orig}"}
         except ValueError as e:
-            return {"error": f"Invalid value: {e}"}
+            out = {"error": f"Invalid value: {e}"}
+        return json.dumps(out, separators=(",", ":"), default=str)
+    wrapper.__annotations__ = {**fn.__annotations__, "return": str}
     return wrapper
 
 
@@ -337,7 +343,8 @@ def recent_activity(since: str | None = None, limit: int = 50) -> dict:
     with _session() as db:
         q = select(m.ActivityLog).order_by(m.ActivityLog.id.desc()).limit(max(1, min(limit, 200)))
         if since:
-            q = q.where(m.ActivityLog.at >= datetime.fromisoformat(since).replace(tzinfo=None))
+            dt = datetime.fromisoformat(since)
+            q = q.where(m.ActivityLog.at >= (dt.astimezone(timezone.utc).replace(tzinfo=None) if dt.tzinfo else dt))
         return {"activity": [_activity(a) for a in db.scalars(q)]}
 
 
@@ -353,8 +360,14 @@ TOOLS = [list_items, get_item, create_items, update_item, add_note, link_items, 
          recent_activity, archive_item]
 
 
+READ_ONLY = {list_items, get_item, list_contractors, list_rooms, list_phases, budget_summary, next_actions,
+             recent_activity}
+
+
 def build_server(**kwargs) -> MCPServer:
     server = MCPServer(name="renovation-tracker", title="Renovation Tracker", instructions=INSTRUCTIONS, **kwargs)
     for fn in TOOLS:
-        server.add_tool(fn)
+        doc = " ".join((fn.__doc__ or "").split())
+        server.add_tool(fn, description=doc + VOCAB if fn in (list_items, create_items, update_item) else doc,
+                        annotations=ToolAnnotations(read_only_hint=fn in READ_ONLY, destructive_hint=False))
     return server

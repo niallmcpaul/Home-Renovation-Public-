@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block title %}{{ c.name }}{% endblock %}
+{% block content %}
+<p><a href="/contractors">&larr; Contractors</a></p>
+<h1>{{ c.name }}</h1>
+
+<h2>Linked quotes</h2>
+{% if quotes %}
+<table>
+  <tr><th>Item</th><th>Amount</th><th>Status</th></tr>
+  {% for q in quotes %}
+  <tr>
+    <td><a href="/items/{{ q.item_id }}">{{ q.item.title if q.item else q.item_id }}</a></td>
+    <td>{{ q.amount|money }}</td>
+    <td><span class="badge">{{ q.status }}</span></td>
+  </tr>
+  {% endfor %}
+</table>
+{% else %}
+<p>No quotes yet.</p>
+{% endif %}
+
+<h2>Items</h2>
+{% if items %}
+<ul>
+  {% for it in items %}
+  <li><a href="/items/{{ it.id }}">{{ it.title }}</a></li>
+  {% endfor %}
+</ul>
+{% else %}
+<p>No linked items.</p>
+{% endif %}
+
+<h2>Edit</h2>
+<form method="post" action="/contractors/{{ c.id }}">
+  <label>Name <input name="name" value="{{ c.name }}" required></label>
+  <label>Company <input name="company" value="{{ c.company or '' }}"></label>
+  <label>Trades <input name="trades" value="{{ c.trades or '' }}"></label>
+  <label>Phone <input name="phone" value="{{ c.phone or '' }}"></label>
+  <label>Email <input name="email" type="email" value="{{ c.email or '' }}"></label>
+  <label>Website <input name="website" value="{{ c.website or '' }}"></label>
+  <label>Recommended by <input name="recommended_by" value="{{ c.recommended_by or '' }}"></label>
+  <label>Registrations <input name="registrations" value="{{ c.registrations or '' }}"></label>
+  <label><input type="checkbox" name="insurance_checked" {% if c.insurance_checked %}checked{% endif %}> Insurance checked</label>
+  <label>Rating (1-5) <input name="rating" type="number" min="1" max="5" value="{{ c.rating or '' }}"></label>
+  <label>Notes <textarea name="notes">{{ c.notes or '' }}</textarea></label>
+  <button type="submit">Save</button>
+</form>
+{% endblock %}

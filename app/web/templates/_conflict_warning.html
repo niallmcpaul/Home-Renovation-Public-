@@ -1,0 +1,23 @@
+{% if conflict_current %}
+<div class="card warn">
+  <h3>Someone else changed this item</h3>
+  <p>Their current values are shown next to what you just submitted. Reapply any of your changes you still want, then save again.</p>
+  <table>
+    <thead><tr><th>Field</th><th>Their value</th><th>Your value</th></tr></thead>
+    <tbody>
+    {% for key, label, kind in field_meta %}
+    {% set theirs = conflict_current.get(key) %}
+    {% set yours = conflict_submitted.get(key) %}
+    {% if theirs != yours %}
+    <tr>
+      <td>{{ label }}</td>
+      <td>{% if kind=='money' %}{{ theirs|money }}{% elif kind=='bool' %}{{ 'yes' if theirs else 'no' }}{% else %}{{ theirs if theirs is not none else '–' }}{% endif %}</td>
+      <td>{% if kind=='money' %}{{ yours|money }}{% elif kind=='bool' %}{{ 'yes' if yours else 'no' }}{% else %}{{ yours if yours is not none else '–' }}{% endif %}</td>
+    </tr>
+    {% endif %}
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
+{% if error %}<p class="error">{{ error }}</p>{% endif %}

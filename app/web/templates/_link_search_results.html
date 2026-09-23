@@ -1,0 +1,21 @@
+{% if results %}
+<ul class="list">
+  {% for r in results %}
+  <li>
+    {{ r.title }}
+    <form method="post" action="/items/{{ item.id }}/dependencies" class="inline-form">
+      <input type="hidden" name="other_id" value="{{ r.id }}">
+      <input type="hidden" name="role" value="blocker">
+      <button type="submit">Add as blocker</button>
+    </form>
+    <form method="post" action="/items/{{ item.id }}/dependencies" class="inline-form">
+      <input type="hidden" name="other_id" value="{{ r.id }}">
+      <input type="hidden" name="role" value="blocked">
+      <button type="submit">Add as blocked-by-this</button>
+    </form>
+  </li>
+  {% endfor %}
+</ul>
+{% elif request.query_params.get('q') %}
+<p class="muted">No matches.</p>
+{% endif %}
