@@ -34,7 +34,7 @@
     <td>{{ summary }}</td>
     <td>
       {% if can_undo %}
-      <form method="post" action="/activity/{{ row.id }}/undo" class="inline-form"><button type="submit" class="btn-secondary">Undo</button></form>
+      <form method="post" action="/activity/{{ row.id }}/undo" class="inline-form"><button type="submit" class="btn-secondary">Undo{% if can_undo > 1 %} ({{ can_undo }} changes){% endif %}</button></form>
       {% endif %}
     </td>
   </tr>

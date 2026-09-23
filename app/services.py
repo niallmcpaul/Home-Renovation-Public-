@@ -1,8 +1,10 @@
 import json
+import uuid
+from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import date, datetime
 
-from sqlalchemy import inspect, select
+from sqlalchemy import func, inspect, select
 from sqlalchemy.orm import Session
 
 from app import models as m
@@ -29,6 +31,16 @@ class ConflictError(ServiceError):
 class Actor:
     user_id: int | None
     via: str = "web"
+    batch_id: str | None = None
+
+
+@contextmanager
+def batch(actor: Actor):
+    prev, actor.batch_id = actor.batch_id, actor.batch_id or uuid.uuid4().hex
+    try:
+        yield
+    finally:
+        actor.batch_id = prev
 
 
 def columns(cls) -> list[str]:
@@ -72,7 +84,7 @@ def _validate(cls, fields: dict):
 
 def log(db: Session, actor: Actor, entity: str, entity_id: int, action: str, before: dict | None, after: dict | None):
     db.add(m.ActivityLog(
-        user_id=actor.user_id, via=actor.via, entity=entity, entity_id=entity_id, action=action,
+        user_id=actor.user_id, via=actor.via, batch_id=actor.batch_id, entity=entity, entity_id=entity_id, action=action,
         before_json=json.dumps(before, default=str) if before is not None else None,
         after_json=json.dumps(after, default=str) if after is not None else None,
     ))
@@ -167,14 +179,15 @@ def unlink_items(db: Session, actor: Actor, blocker_id: int, blocked_id: int) ->
 def accept_quote(db: Session, actor: Actor, quote: m.Quote) -> list[m.Quote]:
     """Accepts the quote and declines other open quotes for the same item. Callers confirm with the user first."""
     declined = []
-    for q in db.scalars(select(m.Quote).where(m.Quote.item_id == quote.item_id, m.Quote.id != quote.id)):
-        if q.status in ("requested", "received"):
-            update(db, actor, q, {"status": "declined"})
-            declined.append(q)
-    update(db, actor, quote, {"status": "accepted"})
-    item = quote.item
-    if m.STATUSES.index(item.status) < m.STATUSES.index("approved"):
-        update(db, actor, item, {"status": "approved"})
+    with batch(actor):
+        for q in db.scalars(select(m.Quote).where(m.Quote.item_id == quote.item_id, m.Quote.id != quote.id)):
+            if q.status in ("requested", "received"):
+                update(db, actor, q, {"status": "declined"})
+                declined.append(q)
+        update(db, actor, quote, {"status": "accepted"})
+        item = quote.item
+        if m.STATUSES.index(item.status) < m.STATUSES.index("approved"):
+            update(db, actor, item, {"status": "approved"})
     return declined
 
 
@@ -192,15 +205,26 @@ def set_setting(db: Session, key: str, value) -> None:
     db.flush()
 
 
-def undo(db: Session, actor: Actor, log_id: int):
-    entry = db.get(m.ActivityLog, log_id)
-    if not entry or entry.undone:
-        raise ServiceError("Nothing to undo")
-    latest = db.scalar(select(m.ActivityLog).where(
-        m.ActivityLog.entity == entry.entity, m.ActivityLog.entity_id == entry.entity_id, m.ActivityLog.undone.is_(False)
-    ).order_by(m.ActivityLog.id.desc()).limit(1))
-    if latest.id != entry.id:
-        raise ServiceError("Only the most recent change to a record can be undone")
+def undo_rows(db: Session, entry: m.ActivityLog) -> list[m.ActivityLog]:
+    if not entry.batch_id:
+        return [entry]
+    return list(db.scalars(select(m.ActivityLog).where(
+        m.ActivityLog.batch_id == entry.batch_id, m.ActivityLog.undone.is_(False)
+    ).order_by(m.ActivityLog.id.desc())))
+
+
+def undo_blocker(db: Session, rows: list[m.ActivityLog]) -> m.ActivityLog | None:
+    ids = {r.id for r in rows}
+    for r in rows:
+        latest = db.scalar(select(func.max(m.ActivityLog.id)).where(
+            m.ActivityLog.entity == r.entity, m.ActivityLog.entity_id == r.entity_id, m.ActivityLog.undone.is_(False)
+        ))
+        if latest not in ids:
+            return r
+    return None
+
+
+def _undo_one(db: Session, actor: Actor, entry: m.ActivityLog):
     cls = ENTITIES[entry.entity]
     obj = db.get(cls, entry.entity_id)
     before = json.loads(entry.before_json) if entry.before_json else None
@@ -222,6 +246,20 @@ def undo(db: Session, actor: Actor, log_id: int):
     db.flush()
 
 
+def undo(db: Session, actor: Actor, log_id: int):
+    entry = db.get(m.ActivityLog, log_id)
+    if not entry or entry.undone:
+        raise ServiceError("Nothing to undo")
+    rows = undo_rows(db, entry)
+    blocker = undo_blocker(db, rows)
+    if blocker and not entry.batch_id:
+        raise ServiceError("Only the most recent change to a record can be undone")
+    if blocker:
+        raise ServiceError(f"{blocker.entity} #{blocker.entity_id} has changed since; undo that change first")
+    for r in rows:
+        _undo_one(db, actor, r)
+
+
 def choose_option(db: Session, actor: Actor, item: m.Item) -> list[m.Item]:
     """Parks every other non-archived item in item's decision_group; advances item out of proposed/idea."""
     if not item.decision_group:
@@ -229,8 +267,9 @@ def choose_option(db: Session, actor: Actor, item: m.Item) -> list[m.Item]:
     siblings = list(db.scalars(select(m.Item).where(
         m.Item.decision_group == item.decision_group, m.Item.id != item.id, m.Item.status.notin_(("archived", "done", "parked"))
     )))
-    for sib in siblings:
-        update(db, actor, sib, {"status": "parked"})
-    if item.status in ("proposed", "idea"):
-        update(db, actor, item, {"status": "researching"})
+    with batch(actor):
+        for sib in siblings:
+            update(db, actor, sib, {"status": "parked"})
+        if item.status in ("proposed", "idea"):
+            update(db, actor, item, {"status": "researching"})
     return siblings

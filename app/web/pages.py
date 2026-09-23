@@ -284,9 +284,15 @@ def activity(
             )
         )
 
+    batch_undo = {}
+    for r in rows:
+        if r.batch_id and r.batch_id not in batch_undo:
+            brows = services.undo_rows(db, r)
+            batch_undo[r.batch_id] = 0 if services.undo_blocker(db, brows) else len(brows)
+
     entries = []
     for r in rows:
-        can_undo = not r.undone and latest_map.get((r.entity, r.entity_id)) == r.id
+        can_undo = 0 if r.undone else batch_undo[r.batch_id] if r.batch_id else int(latest_map.get((r.entity, r.entity_id)) == r.id)
         entries.append((r, _summarize(r), can_undo, _entity_url(r.entity, r.entity_id)))
 
     users = db.scalars(select(m.User).order_by(m.User.display_name)).all()

@@ -157,6 +157,7 @@ class ActivityLog(Base):
     after_json: Mapped[str | None] = mapped_column(Text, nullable=True)
     at: Mapped[datetime] = mapped_column(DateTime, default=now)
     undone: Mapped[bool] = mapped_column(Boolean, default=False)
+    batch_id: Mapped[str | None] = mapped_column(String(32), nullable=True, index=True)
 
     user: Mapped[User | None] = relationship(lazy="joined")
 
