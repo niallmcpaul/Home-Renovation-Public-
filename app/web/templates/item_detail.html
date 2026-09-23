@@ -203,7 +203,7 @@
   <ul class="list">
     {% for h in history %}
     <li><span class="muted">{{ h.at.strftime('%Y-%m-%d %H:%M') }}</span>
-      {{ h.user.display_name if h.user else 'Claude' }} ({{ h.via }}) {{ h.action }}
+      {{ h.user.display_name if h.user else 'System' }} ({{ h.via }}) {{ h.action }}
       {% if h.action == 'update' and h.after_json %}
       – {{ (h.after_json|from_json).keys()|list|join(', ') }}
       {% endif %}
