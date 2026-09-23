@@ -1,6 +1,6 @@
 # Handover: Renovation Tracker build sprint (23 Sep 2026)
 
-Built in one 35-minute cloud session (15:16-15:50 BST) against `PLAN.md` (the original build plan, copied into the repo). This file records what exists, what was verified, what was not, and where to pick up.
+Built in one 31-minute cloud session (15:16-15:47 BST) against `PLAN.md` (the original build plan, copied into the repo). This file records what exists, what was verified, what was not, and where to pick up.
 
 ## Getting this onto your machine
 
