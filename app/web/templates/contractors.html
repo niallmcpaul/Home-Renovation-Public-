@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block title %}Contractors – Renovation Tracker{% endblock %}
+{% block content %}
+<h1>Contractors</h1>
+
+<form method="get" action="/contractors" class="filters">
+  <input type="text" name="q" value="{{ q }}" placeholder="Search name or trade">
+  <button type="submit">Search</button>
+</form>
+
+<ul class="list">
+  {% for c in contractors %}
+  <li>
+    <a href="/contractors/{{ c.id }}">{{ c.name }}</a>{% if c.company %} <span class="muted">– {{ c.company }}</span>{% endif %}
+    {% if c.trades %}<span class="muted">{{ c.trades }}</span>{% endif %}
+    <span class="badge c-blue">{{ c.rating or '–' }}/5</span>
+    {% if c.insurance_checked %}<span class="badge c-green">Insured</span>{% endif %}
+  </li>
+  {% else %}
+  <li class="muted">No contractors yet.</li>
+  {% endfor %}
+</ul>
+
+<section class="card">
+<h2>Add contractor</h2>
+<form method="post" action="/contractors">
+  <div class="grid3">
+    <label>Name <input name="name" required></label>
+    <label>Company <input name="company"></label>
+    <label>Trades <input name="trades" placeholder="e.g. electrician, plumber"></label>
+  </div>
+  <div class="grid3">
+    <label>Phone <input name="phone"></label>
+    <label>Email <input name="email" type="email"></label>
+    <label>Website <input name="website"></label>
+  </div>
+  <div class="grid3">
+    <label>Recommended by <input name="recommended_by"></label>
+    <label>Registrations <input name="registrations" placeholder="Gas Safe, NICEIC..."></label>
+    <label>Rating (1-5) <input name="rating" type="number" min="1" max="5"></label>
+  </div>
+  <label class="checkbox"><input type="checkbox" name="insurance_checked"> Insurance checked</label>
+  <label>Notes <textarea name="notes" rows="2"></textarea></label>
+  <button type="submit">Add contractor</button>
+</form>
+</section>
+{% endblock %}

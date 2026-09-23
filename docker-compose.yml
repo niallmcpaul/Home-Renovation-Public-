@@ -1,0 +1,19 @@
+services:
+  app:
+    build: .
+    restart: unless-stopped
+    volumes:
+      - ./data:/data
+    env_file: .env
+    ports:
+      - "127.0.0.1:8001:8001"
+      - "${TAILSCALE_IP}:8000:8000"
+
+  backup:
+    build: .
+    restart: unless-stopped
+    volumes:
+      - ./data:/data
+      - ./rclone:/home/appuser/.config/rclone
+    env_file: .env
+    entrypoint: ["sh", "-c", "while true; do python -m app.cli backup; sleep 86400; done"]

@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+{% import "_macros.html" as mc %}
+{% block title %}Dashboard – Renovation Tracker{% endblock %}
+{% block content %}
+<h1>Dashboard</h1>
+
+{% if phase1 %}
+<section class="card">
+  <h2>{{ phase1.name }} budget</h2>
+  {% if bar %}
+  <div class="bar">
+    <div class="bar-spent" style="width:{{ bar.spent_pct }}%"></div>
+    <div class="bar-committed" style="width:{{ bar.committed_pct }}%"></div>
+    <div class="bar-available" style="width:{{ bar.available_pct }}%"></div>
+  </div>
+  {% endif %}
+  <p class="bar-legend">
+    <span class="c-red">Spent {{ budget.spent|money }}</span>
+    <span class="c-orange">Committed {{ budget.committed|money }}</span>
+    <span class="c-green">Available {{ budget.available|money if budget.available is not none else '–' }}</span>
+    <span class="muted">of {{ budget.budget_min|money }}–{{ budget.budget_max|money }}</span>
+  </p>
+</section>
+{% endif %}
+
+<section class="card">
+  <h2>Next actions</h2>
+  {% if actions %}
+  <ul class="list">
+    {% for a in actions %}
+    <li>
+      <a href="/items/{{ a.item.id }}">{{ a.item.title }}</a>
+      {{ mc.category_badge(a.item.category) }}
+      {{ mc.status_badge(a.item.status) }}
+      {{ mc.blocks_badge(a.blocks) }}
+      {{ mc.needs_quotes_badge(a.needs_quotes) }}
+      {% if a.over_budget %}<span class="badge c-red">over budget</span>{% endif %}
+    </li>
+    {% endfor %}
+  </ul>
+  {% else %}<p class="muted">Nothing queued.</p>{% endif %}
+</section>
+
+<section class="card">
+  <h2>Blocked items</h2>
+  {% if blocked_items %}
+  <ul class="list">
+    {% for it in blocked_items %}
+    <li><a href="/items/{{ it.id }}">{{ it.title }}</a> {{ mc.status_badge(it.status) }}</li>
+    {% endfor %}
+  </ul>
+  {% else %}<p class="muted">Nothing blocked.</p>{% endif %}
+</section>
+
+{% if proposed %}
+<section class="card">
+  <h2>Proposed by Claude</h2>
+  {% if proposed|length > 1 %}
+  <form method="post" action="/inbox/confirm-all" onsubmit="return confirm('Confirm all {{ proposed|length }} proposed items?')"><button type="submit">Confirm all ({{ proposed|length }})</button></form>
+  {% endif %}
+  <ul class="list">
+    {% for it in proposed %}
+    <li>
+      <a href="/items/{{ it.id }}">{{ it.title }}</a> {{ mc.category_badge(it.category) }}
+      {% if it.source_ref %}<span class="muted">({{ it.source_ref }})</span>{% endif %}
+      <form method="post" action="/items/{{ it.id }}/confirm" class="inline-form"><button type="submit">Confirm</button></form>
+      <form method="post" action="/items/{{ it.id }}/discard" class="inline-form"><button type="submit" class="btn-secondary">Discard</button></form>
+    </li>
+    {% endfor %}
+  </ul>
+</section>
+{% endif %}
+
+<section class="card">
+  <h2>Quotes expiring within 14 days</h2>
+  {% if expiring %}
+  <ul class="list">
+    {% for q in expiring %}
+    <li>
+      <a href="/items/{{ q.item_id }}">{{ q.item.title }}</a>
+      {{ q.contractor.name if q.contractor else 'Unnamed contractor' }} – {{ q.amount|money }}
+      – valid until {{ q.valid_until }}
+    </li>
+    {% endfor %}
+  </ul>
+  {% else %}<p class="muted">None expiring soon.</p>{% endif %}
+</section>
+{% endblock %}

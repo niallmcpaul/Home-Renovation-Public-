@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block title %}Activity – Renovation Tracker{% endblock %}
+{% block content %}
+<h1>Activity</h1>
+
+<form method="get" action="/activity" class="filters">
+  <select name="entity">
+    <option value="">All entities</option>
+    {% for e in ENTITIES %}<option value="{{ e }}" {% if e == entity %}selected{% endif %}>{{ e }}</option>{% endfor %}
+  </select>
+  <select name="via">
+    <option value="">All sources</option>
+    <option value="web" {% if via == 'web' %}selected{% endif %}>web</option>
+    <option value="claude" {% if via == 'claude' %}selected{% endif %}>claude</option>
+  </select>
+  <select name="user_id">
+    <option value="">All users</option>
+    {% for u in users %}<option value="{{ u.id }}" {% if user_id == u.id|string %}selected{% endif %}>{{ u.display_name }}</option>{% endfor %}
+  </select>
+  <button type="submit">Filter</button>
+</form>
+
+<div class="table-scroll">
+<table>
+  <thead><tr><th>When</th><th>User</th><th>Via</th><th>Entity</th><th>Action</th><th>Changes</th><th></th></tr></thead>
+  <tbody>
+  {% for row, summary, can_undo, url in entries %}
+  <tr>
+    <td>{{ row.at.strftime('%Y-%m-%d %H:%M') }}</td>
+    <td>{{ row.user.display_name if row.user else '–' }}</td>
+    <td>{{ row.via }}</td>
+    <td>{% if url %}<a href="{{ url }}">{{ row.entity }} #{{ row.entity_id }}</a>{% else %}{{ row.entity }} #{{ row.entity_id }}{% endif %}</td>
+    <td>{{ row.action }}</td>
+    <td>{{ summary }}</td>
+    <td>
+      {% if can_undo %}
+      <form method="post" action="/activity/{{ row.id }}/undo" class="inline-form"><button type="submit" class="btn-secondary">Undo{% if can_undo > 1 %} ({{ can_undo }} changes){% endif %}</button></form>
+      {% endif %}
+    </td>
+  </tr>
+  {% else %}
+  <tr><td colspan="7" class="muted">No activity yet.</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+
+<p class="muted">
+  {% if page > 1 %}<a href="?entity={{ entity }}&via={{ via }}&user_id={{ user_id }}&page={{ page - 1 }}">Newer</a>{% endif %}
+  {% if page * 50 < total %}<a href="?entity={{ entity }}&via={{ via }}&user_id={{ user_id }}&page={{ page + 1 }}">Older</a>{% endif %}
+</p>
+{% endblock %}

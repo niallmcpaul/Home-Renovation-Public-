@@ -1,0 +1,28 @@
+{% macro category_badge(cat) -%}
+{% set colors = {"urgent":"red","enabling":"orange","improvement":"blue","wish":"gray"} %}
+<span class="badge c-{{ colors.get(cat,'gray') }}">{{ cat }}</span>
+{%- endmacro %}
+
+{% macro status_badge(status) -%}
+{% set colors = {"proposed":"purple","idea":"gray","researching":"blue","quoting":"teal","approved":"green",
+"scheduled":"green","in_progress":"orange","done":"gray","parked":"yellow","archived":"gray"} %}
+<span class="badge c-{{ colors.get(status,'gray') }}">{{ status.replace('_',' ') }}</span>
+{%- endmacro %}
+
+{% macro blocks_badge(n) -%}
+{% if n %}<span class="badge c-red" title="blocks {{ n }} item(s)">blocks {{ n }}</span>{% endif %}
+{%- endmacro %}
+
+{% macro blocked_badge(is_blocked) -%}
+{% if is_blocked %}<span class="badge c-red">blocked</span>{% endif %}
+{%- endmacro %}
+
+{% macro needs_quotes_badge(n) -%}
+{% if n is not none %}<span class="badge c-yellow">needs quotes ({{ n }}/3)</span>{% endif %}
+{%- endmacro %}
+
+{% macro money_input(name, value, label) -%}
+<label>{{ label }}
+<input type="text" inputmode="decimal" name="{{ name }}" value="{{ '%.2f'|format(value/100) if value is not none else '' }}" placeholder="0.00">
+</label>
+{%- endmacro %}

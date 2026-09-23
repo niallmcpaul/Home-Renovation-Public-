@@ -1,0 +1,224 @@
+{% extends "base.html" %}
+{% import "_macros.html" as mc %}
+{% block title %}{{ item.title }} – Renovation Tracker{% endblock %}
+{% block content %}
+<h1>{{ item.title }} {{ mc.category_badge(item.category) }} {{ mc.status_badge(item.status) }}</h1>
+
+{% include "_conflict_warning.html" %}
+
+<section class="card">
+  <h2>Details</h2>
+  <form method="post" action="/items/{{ item.id }}">
+    <input type="hidden" name="updated_at" value="{{ item.updated_at.isoformat() }}">
+    <label>Title <input type="text" name="title" value="{{ vals.title }}" required></label>
+    <label>Description <textarea name="description" rows="3">{{ vals.description }}</textarea></label>
+    <div class="grid3">
+      <label>Size
+        <select name="size">{% for s in SIZES %}<option value="{{ s }}" {% if vals.size==s %}selected{% endif %}>{{ s }}</option>{% endfor %}</select>
+      </label>
+      <label>Category
+        <select name="category">{% for c in CATEGORIES %}<option value="{{ c }}" {% if vals.category==c %}selected{% endif %}>{{ c }}</option>{% endfor %}</select>
+      </label>
+      <label>Status
+        <select name="status">{% for s in STATUSES %}<option value="{{ s }}" {% if vals.status==s %}selected{% endif %}>{{ s }}</option>{% endfor %}</select>
+      </label>
+    </div>
+    <div class="grid3">
+      <label>Room
+        <select name="room_id"><option value="">–</option>{% for r in rooms %}<option value="{{ r.id }}" {% if vals.room_id==r.id|string %}selected{% endif %}>{{ r.name }}</option>{% endfor %}</select>
+      </label>
+      <label>Phase
+        <select name="phase_id"><option value="">–</option>{% for p in phases %}<option value="{{ p.id }}" {% if vals.phase_id==p.id|string %}selected{% endif %}>{{ p.name }}</option>{% endfor %}</select>
+      </label>
+      <label>Decision group <input type="text" name="decision_group" value="{{ vals.decision_group }}" placeholder="e.g. Ground floor finish"></label>
+    </div>
+    <div class="grid3">
+      <label>Estimate low (£) <input type="text" inputmode="decimal" name="estimate_low" value="{{ vals.estimate_low }}"></label>
+      <label>Estimate high (£) <input type="text" inputmode="decimal" name="estimate_high" value="{{ vals.estimate_high }}"></label>
+      <label>Actual cost (£) <input type="text" inputmode="decimal" name="actual_cost" value="{{ vals.actual_cost }}"></label>
+    </div>
+    <div class="grid3">
+      <label>Planned start <input type="date" name="planned_start" value="{{ vals.planned_start }}"></label>
+      <label>Planned end <input type="date" name="planned_end" value="{{ vals.planned_end }}"></label>
+      <label>Completed on <input type="date" name="completed_on" value="{{ vals.completed_on }}"></label>
+    </div>
+    <div class="grid3">
+      <label class="checkbox"><input type="checkbox" name="needs_building_control" {% if vals.needs_building_control %}checked{% endif %}> Needs building control</label>
+      <label class="checkbox"><input type="checkbox" name="needs_planning_check" {% if vals.needs_planning_check %}checked{% endif %}> Needs planning check</label>
+      <label>Source
+        <select name="source">{% for s in ["manual","claude","survey"] %}<option value="{{ s }}" {% if vals.source==s %}selected{% endif %}>{{ s }}</option>{% endfor %}</select>
+      </label>
+    </div>
+    <label>Source ref <input type="text" name="source_ref" value="{{ vals.source_ref }}"></label>
+    <label>Compliance notes <textarea name="compliance_notes" rows="2">{{ vals.compliance_notes }}</textarea></label>
+    <button type="submit">Save</button>
+  </form>
+  <form method="post" action="/items/{{ item.id }}/archive" class="inline-form" onsubmit="return confirm('Archive this item?')">
+    <button type="submit" class="btn-secondary">Archive</button>
+  </form>
+</section>
+
+<section class="card">
+  <h2>Dependencies</h2>
+  <h3>Blocked by</h3>
+  {% if blockers %}
+  <ul class="list">
+    {% for b in blockers %}
+    <li><a href="/items/{{ b.id }}">{{ b.title }}</a> {{ mc.status_badge(b.status) }}
+      <form method="post" action="/items/{{ item.id }}/dependencies/unlink" class="inline-form">
+        <input type="hidden" name="other_id" value="{{ b.id }}"><input type="hidden" name="role" value="blocker">
+        <button type="submit" class="btn-secondary">Unlink</button>
+      </form>
+    </li>
+    {% endfor %}
+  </ul>
+  {% else %}<p class="muted">Nothing blocks this item.</p>{% endif %}
+
+  <h3>Blocks</h3>
+  {% if blocked_by %}
+  <ul class="list">
+    {% for b in blocked_by %}
+    <li><a href="/items/{{ b.id }}">{{ b.title }}</a> {{ mc.status_badge(b.status) }}
+      <form method="post" action="/items/{{ item.id }}/dependencies/unlink" class="inline-form">
+        <input type="hidden" name="other_id" value="{{ b.id }}"><input type="hidden" name="role" value="blocked">
+        <button type="submit" class="btn-secondary">Unlink</button>
+      </form>
+    </li>
+    {% endfor %}
+  </ul>
+  {% else %}<p class="muted">This item blocks nothing.</p>{% endif %}
+
+  <h3>Link another item</h3>
+  <input type="search" placeholder="Search items…" hx-get="/items/{{ item.id }}/link-search" hx-trigger="input changed delay:300ms" hx-target="#link-results" name="q">
+  <div id="link-results"></div>
+</section>
+
+{% if item.decision_group %}
+<section class="card">
+  <h2>Decision group: {{ item.decision_group }}</h2>
+  {% if siblings %}
+  <ul class="list">
+    {% for s in siblings %}<li><a href="/items/{{ s.id }}">{{ s.title }}</a> {{ mc.status_badge(s.status) }} {{ s.estimate_low|money }}–{{ s.estimate_high|money }}</li>{% endfor %}
+  </ul>
+  {% else %}<p class="muted">No other options in this group yet.</p>{% endif %}
+  {% set choosable = siblings | rejectattr('status', 'in', ['parked', 'archived']) | list %}
+  {% if choosable %}
+  {% set names = choosable | map(attribute='title') | map('replace', '"', '\\"') | join(', ') %}
+  {% set safe_title = item.title | replace('"', '\\"') %}
+  <form method="post" action="/items/{{ item.id }}/choose" class="inline-form"
+        onsubmit='return confirm("Choose {{ safe_title }}? This will park: {{ names }}.")'>
+    <button type="submit">Choose this option</button>
+  </form>
+  {% endif %}
+</section>
+{% endif %}
+
+<section class="card">
+  <h2>Quotes</h2>
+  {% if item.quotes %}
+  <div class="table-scroll">
+  <table>
+    <thead><tr><th>Contractor</th><th>Amount</th><th>VAT</th><th>Scope</th><th>Exclusions</th><th>Received</th><th>Valid until</th><th>Status</th><th>Rating</th><th></th></tr></thead>
+    <tbody>
+    {% for q in item.quotes %}
+    <tr class="{{ 'warn' if q.id in quote_expiring_ids else '' }}">
+      <td>{{ q.contractor.name if q.contractor else '–' }}</td>
+      <td>{{ q.amount|money }}</td>
+      <td>{{ 'incl' if q.includes_vat else 'excl' }}</td>
+      <td>{{ q.scope or '–' }}</td>
+      <td>{{ q.exclusions or '–' }}</td>
+      <td>{{ q.received_on or '–' }}</td>
+      <td>{{ q.valid_until or '–' }}</td>
+      <td>
+        <form method="post" action="/items/{{ item.id }}/quotes/{{ q.id }}" class="inline-form">
+          <select name="status" onchange="this.form.requestSubmit()">
+            {% for s in QUOTE_STATUSES %}<option value="{{ s }}" {% if q.status==s %}selected{% endif %}>{{ s }}</option>{% endfor %}
+          </select>
+        </form>
+      </td>
+      <td>{{ q.contractor.rating ~ '/5' if q.contractor and q.contractor.rating else '–' }}</td>
+      <td>
+        {% if q.status != 'accepted' %}
+        <form method="post" action="/items/{{ item.id }}/quotes/{{ q.id }}/accept" class="inline-form" onsubmit="return confirm('Accept this quote? Other open quotes for this item will be declined.')">
+          <button type="submit">Accept</button>
+        </form>
+        {% endif %}
+      </td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  </div>
+  {% else %}<p class="muted">No quotes yet.</p>{% endif %}
+
+  <h3>Add quote</h3>
+  <form method="post" action="/items/{{ item.id }}/quotes">
+    <div class="grid3">
+      <label>Contractor
+        <select name="contractor_id"><option value="">–</option>{% for c in contractors %}<option value="{{ c.id }}">{{ c.name }}</option>{% endfor %}</select>
+      </label>
+      <label>Amount (£) <input type="text" inputmode="decimal" name="amount"></label>
+      <label class="checkbox"><input type="checkbox" name="includes_vat" checked> Includes VAT</label>
+    </div>
+    <label>Scope <textarea name="scope" rows="2"></textarea></label>
+    <label>Exclusions <textarea name="exclusions" rows="2"></textarea></label>
+    <div class="grid3">
+      <label>Received on <input type="date" name="received_on"></label>
+      <label>Valid until <input type="date" name="valid_until"></label>
+      <label>Status
+        <select name="status">{% for s in QUOTE_STATUSES %}<option value="{{ s }}">{{ s }}</option>{% endfor %}</select>
+      </label>
+    </div>
+    <button type="submit">Add quote</button>
+  </form>
+</section>
+
+<section class="card">
+  <h2>Attachments</h2>
+  {% if item.attachments %}
+  <div class="gallery">
+    {% for a in item.attachments %}
+    <a href="/uploads/{{ a.id }}" target="_blank" class="gallery-item">
+      {% if a.mime_type.startswith('image/') %}<img src="/uploads/{{ a.id }}" alt="{{ a.filename }}" loading="lazy">
+      {% else %}<div class="file-icon">{{ a.kind }}</div>{% endif %}
+      <span class="muted">{{ a.kind }}</span>
+    </a>
+    {% endfor %}
+  </div>
+  {% else %}<p class="muted">No attachments yet.</p>{% endif %}
+  <form method="post" action="/items/{{ item.id }}/attachments" enctype="multipart/form-data">
+    <input type="file" name="file" accept="image/*,application/pdf" capture="environment" required>
+    <select name="kind">{% for k in ATTACHMENT_KINDS %}<option value="{{ k }}">{{ k }}</option>{% endfor %}</select>
+    <button type="submit">Upload</button>
+  </form>
+</section>
+
+<section class="card">
+  <h2>Notes</h2>
+  {% if item.notes %}
+  <ul class="list">
+    {% for n in item.notes %}<li><span class="muted">{{ n.created_at.strftime('%Y-%m-%d %H:%M') }}</span> {{ n.body }}</li>{% endfor %}
+  </ul>
+  {% else %}<p class="muted">No notes yet.</p>{% endif %}
+  <form method="post" action="/items/{{ item.id }}/notes">
+    <textarea name="body" rows="2" placeholder="Add a note…" required></textarea>
+    <button type="submit">Add note</button>
+  </form>
+</section>
+
+<section class="card">
+  <h2>History</h2>
+  {% if history %}
+  <ul class="list">
+    {% for h in history %}
+    <li><span class="muted">{{ h.at.strftime('%Y-%m-%d %H:%M') }}</span>
+      {{ h.user.display_name if h.user else 'System' }} ({{ h.via }}) {{ h.action }}
+      {% if h.action == 'update' and h.after_json %}
+      – {{ (h.after_json|from_json).keys()|list|join(', ') }}
+      {% endif %}
+    </li>
+    {% endfor %}
+  </ul>
+  {% else %}<p class="muted">No history yet.</p>{% endif %}
+</section>
+{% endblock %}
