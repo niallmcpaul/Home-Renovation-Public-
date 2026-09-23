@@ -273,6 +273,17 @@ def accept_quote(id: int) -> dict:
 
 
 @_safe
+def choose_option(item_id: int) -> dict:
+    """Choose one item as the pick for its decision_group: parks every other non-archived item in that group and,
+    if this item is proposed/idea, advances it to researching. Use only when the user has explicitly chosen between
+    mutually exclusive options."""
+    with _session() as db:
+        item = _get(db, m.Item, item_id)
+        parked = s.choose_option(db, _actor(), item)
+        return {"chosen": _summary(item), "parked_ids": [p.id for p in parked]}
+
+
+@_safe
 def list_contractors(text: str | None = None) -> dict:
     """List contractors; optional text filter on name, company or trades."""
     with _session() as db:
@@ -356,8 +367,8 @@ def archive_item(id: int) -> dict:
 
 
 TOOLS = [list_items, get_item, create_items, update_item, add_note, link_items, unlink_items, add_quote, update_quote,
-         accept_quote, list_contractors, upsert_contractor, list_rooms, list_phases, budget_summary, next_actions,
-         recent_activity, archive_item]
+         accept_quote, choose_option, list_contractors, upsert_contractor, list_rooms, list_phases, budget_summary,
+         next_actions, recent_activity, archive_item]
 
 
 READ_ONLY = {list_items, get_item, list_contractors, list_rooms, list_phases, budget_summary, next_actions,

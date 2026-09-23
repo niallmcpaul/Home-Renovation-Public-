@@ -14,5 +14,6 @@ services:
     restart: unless-stopped
     volumes:
       - ./data:/data
+      - ./rclone:/home/appuser/.config/rclone
     env_file: .env
     entrypoint: ["sh", "-c", "while true; do python -m app.cli backup; sleep 86400; done"]

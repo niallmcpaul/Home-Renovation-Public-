@@ -174,8 +174,9 @@ daily copies plus one per month for 12 months.
 
 **Off-machine copy (recommended):** if a burglary, fire or disk failure would take out
 your only copy, set `RCLONE_REMOTE` in `.env` to an [rclone](https://rclone.org)
-remote name (e.g. a OneDrive or Google Drive folder you've configured with
-`rclone config`) and each backup will also be copied there.
+remote name (e.g. `onedrive:renovation-backups`) and each backup will also be copied there.
+Set up the remote once with `docker compose run --rm --entrypoint rclone backup config`; the config
+is saved in the `rclone` folder next to `docker-compose.yml`.
 
 **Manual backup any time:**
 

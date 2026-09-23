@@ -1,5 +1,8 @@
 .venv/
-data/
+data/*
+!data/.gitkeep
+rclone/*
+!rclone/.gitkeep
 .env
 __pycache__/
 *.pyc

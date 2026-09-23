@@ -220,3 +220,17 @@ def undo(db: Session, actor: Actor, log_id: int):
     db.query(m.ActivityLog).filter(m.ActivityLog.id > entry.id, m.ActivityLog.entity == entry.entity,
                                    m.ActivityLog.entity_id == entry.entity_id).update({"undone": True})
     db.flush()
+
+
+def choose_option(db: Session, actor: Actor, item: m.Item) -> list[m.Item]:
+    """Parks every other non-archived item in item's decision_group; advances item out of proposed/idea."""
+    if not item.decision_group:
+        raise ServiceError("Item has no decision_group")
+    siblings = list(db.scalars(select(m.Item).where(
+        m.Item.decision_group == item.decision_group, m.Item.id != item.id, m.Item.status != "archived"
+    )))
+    for sib in siblings:
+        update(db, actor, sib, {"status": "parked"})
+    if item.status in ("proposed", "idea"):
+        update(db, actor, item, {"status": "researching"})
+    return siblings

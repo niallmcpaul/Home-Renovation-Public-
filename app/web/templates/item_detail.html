@@ -101,6 +101,15 @@
     {% for s in siblings %}<li><a href="/items/{{ s.id }}">{{ s.title }}</a> {{ mc.status_badge(s.status) }} {{ s.estimate_low|money }}–{{ s.estimate_high|money }}</li>{% endfor %}
   </ul>
   {% else %}<p class="muted">No other options in this group yet.</p>{% endif %}
+  {% set choosable = siblings | rejectattr('status', 'in', ['parked', 'archived']) | list %}
+  {% if choosable %}
+  {% set names = choosable | map(attribute='title') | map('replace', '"', '\\"') | join(', ') %}
+  {% set safe_title = item.title | replace('"', '\\"') %}
+  <form method="post" action="/items/{{ item.id }}/choose" class="inline-form"
+        onsubmit='return confirm("Choose {{ safe_title }}? This will park: {{ names }}.")'>
+    <button type="submit">Choose this option</button>
+  </form>
+  {% endif %}
 </section>
 {% endif %}
 

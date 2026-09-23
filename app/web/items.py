@@ -349,6 +349,18 @@ async def update_quote(request: Request, item_id: int, quote_id: int, user: m.Us
     return RedirectResponse(with_msg(f"/items/{item_id}", msg), status_code=303)
 
 
+@router.post("/items/{item_id}/choose")
+def choose_option(item_id: int, user: m.User = Depends(require_user), db: Session = Depends(get_db)):
+    item = get_or_404(db, m.Item, item_id)
+    try:
+        parked = services.choose_option(db, actor(user), item)
+    except services.ServiceError as e:
+        db.rollback()
+        return RedirectResponse(with_msg(f"/items/{item_id}", str(e)), status_code=303)
+    db.commit()
+    return RedirectResponse(with_msg(f"/items/{item_id}", f"Chosen; parked {len(parked)} option(s)"), status_code=303)
+
+
 @router.post("/items/{item_id}/quotes/{quote_id}/accept")
 def accept_quote(item_id: int, quote_id: int, user: m.User = Depends(require_user), db: Session = Depends(get_db)):
     quote = get_or_404(db, m.Quote, quote_id)

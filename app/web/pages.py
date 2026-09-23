@@ -78,6 +78,14 @@ def contractor_update(
 
 # ---------- Timeline ----------
 
+def _month_start(d: date) -> date:
+    return d.replace(day=1)
+
+
+def _next_month(d: date) -> date:
+    return date(d.year + 1, 1, 1) if d.month == 12 else date(d.year, d.month + 1, 1)
+
+
 @router.get("/timeline")
 def timeline(request: Request, db: Session = Depends(get_db), user: m.User = Depends(require_user)):
     items = db.scalars(
@@ -90,7 +98,36 @@ def timeline(request: Request, db: Session = Depends(get_db), user: m.User = Dep
         groups.setdefault(key, []).append(it)
     months = sorted(groups)
     month_labels = {key: date.fromisoformat(f"{key}-01").strftime("%B %Y") for key in months}
-    return render(request, "timeline.html", user, months=months, groups=groups, warnings=warnings, month_labels=month_labels)
+
+    gantt_items = []
+    gantt_months = []
+    if items:
+        range_start = _month_start(min(it.planned_start for it in items))
+        range_end = max((it.planned_end or it.planned_start) for it in items)
+        range_end = _next_month(_month_start(range_end))
+        total_days = (range_end - range_start).days
+
+        cur = range_start
+        while cur < range_end:
+            gantt_months.append(cur.strftime("%b %Y"))
+            cur = _next_month(cur)
+
+        for it in items:
+            start = it.planned_start
+            end = it.planned_end or (start + timedelta(days=7))
+            left = max((start - range_start).days / total_days * 100, 0)
+            width = max((end - start).days / total_days * 100, 1.5)
+            gantt_items.append({
+                "item": it,
+                "left": left,
+                "width": width,
+                "warned": bool(warnings.get(it.id)),
+            })
+
+    return render(
+        request, "timeline.html", user, months=months, groups=groups, warnings=warnings,
+        month_labels=month_labels, gantt_items=gantt_items, gantt_months=gantt_months,
+    )
 
 
 def _ics_escape(s: str | None) -> str:

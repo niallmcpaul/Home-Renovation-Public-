@@ -47,7 +47,10 @@ def backup(dest_dir: Path | str) -> Path:
 
     remote = os.environ.get("RCLONE_REMOTE")
     if remote:
-        subprocess.run(["rclone", "copy", str(archive), remote], check=False)
+        if not shutil.which("rclone"):
+            print("WARNING: RCLONE_REMOTE is set but rclone is not installed; off-machine copy skipped")
+        elif subprocess.run(["rclone", "copy", str(archive), remote]).returncode != 0:
+            print(f"WARNING: rclone copy to {remote} failed; local backup is intact")
 
     return archive
 
