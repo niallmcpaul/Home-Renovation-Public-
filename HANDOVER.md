@@ -4,14 +4,12 @@ Built in one 45-minute cloud session against `PLAN.md` (the original build plan,
 
 ## Getting this onto your machine
 
-The cloud session could not push to GitHub (the Claude GitHub App has no access to `niallmcpaul/Home-Renovation-Public-`; fix at https://claude.ai/connect-github). The work is delivered two ways:
+All work is on branch `claude/weekly-usage-sprint-handover-epdq1h`, draft PR #1.
 
-- `renovation-tracker.bundle`: a git bundle with full history of branch `claude/weekly-usage-sprint-handover-epdq1h`. In your local clone:
-  ```
-  git fetch /path/to/renovation-tracker.bundle claude/weekly-usage-sprint-handover-epdq1h:sprint
-  git checkout sprint
-  ```
-- `renovation-tracker.tar.gz`: plain source snapshot, if you would rather not use git.
+```
+git fetch origin claude/weekly-usage-sprint-handover-epdq1h
+git checkout claude/weekly-usage-sprint-handover-epdq1h
+```
 
 ## Run it locally (no Docker)
 
