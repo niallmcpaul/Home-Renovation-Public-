@@ -1,81 +1,114 @@
 {% extends "base.html" %}
-{% block title %}Budget{% endblock %}
+{% import "_macros.html" as mc %}
+{% block title %}Budget – Renovation Tracker{% endblock %}
 {% block content %}
 <h1>Budget</h1>
 
 {% for p in phases %}
 {% set b = budgets[p.id] %}
-<div class="card">
+{% set bar = bars[p.id] %}
+<section class="card">
   <h2>{{ p.name }}</h2>
-  <div class="bar"><div style="width: {{ (100 * ((b.committed + b.spent) / b.budget_max)) if b.budget_max else 0 }}%"></div></div>
-  <p>
-    Budget: {{ b.budget_min|money }} &ndash; {{ b.budget_max|money }} &middot;
-    Committed {{ b.committed|money }} &middot; Spent {{ b.spent|money }} &middot;
-    Available {{ b.available|money }}
+  {% if bar %}
+  <div class="bar">
+    <div class="bar-spent" style="width:{{ bar.spent_pct }}%"></div>
+    <div class="bar-committed" style="width:{{ bar.committed_pct }}%"></div>
+    <div class="bar-available" style="width:{{ bar.available_pct }}%"></div>
+  </div>
+  {% endif %}
+  <p class="bar-legend">
+    <span class="c-red">Spent {{ b.spent|money }}</span>
+    <span class="c-orange">Committed {{ b.committed|money }}</span>
+    <span class="c-green">Available {{ b.available|money }}</span>
+    <span class="muted">of {{ b.budget_min|money }}–{{ b.budget_max|money }}</span>
   </p>
   <details>
     <summary>Edit phase</summary>
     <form method="post" action="/budget/phases/{{ p.id }}">
       <label>Name <input name="name" value="{{ p.name }}" required></label>
-      <label>Budget min (£) <input name="budget_min" value="{{ (p.budget_min/100)|round(2) if p.budget_min is not none else '' }}"></label>
-      <label>Budget max (£) <input name="budget_max" value="{{ (p.budget_max/100)|round(2) if p.budget_max is not none else '' }}"></label>
-      <label>Target start <input type="date" name="target_start" value="{{ p.target_start or '' }}"></label>
-      <label>Notes <textarea name="notes">{{ p.notes or '' }}</textarea></label>
+      <div class="grid3">
+        {{ mc.money_input('budget_min', p.budget_min, 'Budget min (£)') }}
+        {{ mc.money_input('budget_max', p.budget_max, 'Budget max (£)') }}
+        <label>Target start <input type="date" name="target_start" value="{{ p.target_start or '' }}"></label>
+      </div>
+      <label>Notes <textarea name="notes" rows="2">{{ p.notes or '' }}</textarea></label>
       <button type="submit">Save</button>
     </form>
   </details>
-</div>
+</section>
 {% endfor %}
 
+<section class="card">
 <details>
 <summary>Add phase</summary>
 <form method="post" action="/budget/phases">
   <label>Name <input name="name" required></label>
-  <label>Budget min (£) <input name="budget_min"></label>
-  <label>Budget max (£) <input name="budget_max"></label>
-  <label>Target start <input type="date" name="target_start"></label>
-  <label>Notes <textarea name="notes"></textarea></label>
+  <div class="grid3">
+    {{ mc.money_input('budget_min', none, 'Budget min (£)') }}
+    {{ mc.money_input('budget_max', none, 'Budget max (£)') }}
+    <label>Target start <input type="date" name="target_start"></label>
+  </div>
+  <label>Notes <textarea name="notes" rows="2"></textarea></label>
   <button type="submit">Add phase</button>
 </form>
 </details>
+</section>
 
+<section class="card">
 <h2>Savings</h2>
 <p>Pot: <strong>{{ pot|money }}</strong></p>
 
 <form method="post" action="/budget/savings">
-  <label>Date <input type="date" name="date" required></label>
-  <label>Amount (£, negative = withdrawn) <input name="amount" required></label>
-  <label>Note <input name="note"></label>
+  <div class="grid3">
+    <label>Date <input type="date" name="date" required></label>
+    {{ mc.money_input('amount', none, 'Amount (£, negative = withdrawn)') }}
+    <label>Note <input name="note"></label>
+  </div>
   <button type="submit">Add entry</button>
 </form>
 
+<div class="table-scroll">
 <table>
-  <tr><th>Date</th><th>Amount</th><th>Note</th></tr>
+  <thead><tr><th>Date</th><th>Amount</th><th>Note</th></tr></thead>
+  <tbody>
   {% for e in entries %}
   <tr><td>{{ e.date }}</td><td>{{ e.amount|money }}</td><td>{{ e.note or '' }}</td></tr>
   {% else %}
-  <tr><td colspan="3">No savings entries yet.</td></tr>
+  <tr><td colspan="3" class="muted">No savings entries yet.</td></tr>
   {% endfor %}
+  </tbody>
 </table>
+</div>
+</section>
 
-<h2>Settings</h2>
+<section class="card">
+<h2>Savings settings</h2>
 <form method="post" action="/budget/settings">
-  <label>Monthly saving target (£) <input name="monthly_saving_target" value="{{ (monthly/100)|round(2) }}"></label>
-  <label>Quote threshold (£) <input name="quote_threshold" value="{{ (threshold/100)|round(2) }}"></label>
+  <div class="grid3">
+    {{ mc.money_input('monthly_saving_target', monthly, 'Monthly saving target (£)') }}
+    {{ mc.money_input('quote_threshold', threshold, 'Quote nudge threshold (£)') }}
+  </div>
   <button type="submit">Save</button>
 </form>
+</section>
 
+<section class="card">
 <h2>Savings projection</h2>
+<div class="table-scroll">
 <table>
-  <tr><th>Item</th><th>Cost</th><th>Affordable</th></tr>
+  <thead><tr><th>Item</th><th>Cost</th><th>Affordable</th></tr></thead>
+  <tbody>
   {% for row in projection.queue %}
   <tr>
-    <td>{{ row.item.title }}</td>
+    <td><a href="/items/{{ row.item.id }}">{{ row.item.title }}</a></td>
     <td>{{ row.cost|money }}</td>
     <td>{{ row.affordable_month.strftime('%B %Y') if row.affordable_month else 'not within 20 years' }}</td>
   </tr>
   {% else %}
-  <tr><td colspan="3">Nothing queued in the Later phase.</td></tr>
+  <tr><td colspan="3" class="muted">Nothing queued in the Later phase.</td></tr>
   {% endfor %}
+  </tbody>
 </table>
+</div>
+</section>
 {% endblock %}
