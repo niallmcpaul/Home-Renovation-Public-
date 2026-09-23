@@ -58,7 +58,7 @@ export DATA_DIR=./data SECRET_KEY=dev
 - **Repaint estimate** seeded as £3,450–£7,500 (labour plus 15–25% materials), with the raw wording in the description.
 - **Schema management.** `app.cli init` runs `create_all` and stamps Alembic head. Future model changes need an Alembic migration (`alembic revision --autogenerate`).
 - **No CSRF tokens** on the private UI; it relies on `SameSite=Lax` cookies and tailnet-only reach, as PLAN §9 specifies.
-- **HEIC photos** (iPhone default) are accepted but not downscaled; stock Pillow cannot decode HEIC. Adding `pillow-heif` would fix it.
+- **HEIC photos** (iPhone default) are converted to JPEG on upload via `pillow-heif`, so every browser can show them.
 - **Backups run in a second container** on a 24-hour sleep loop, not at a fixed time of night. On Windows, keep the repo inside the WSL2 filesystem: SQLite WAL on a Windows-mounted folder is unreliable.
 - **The `data` and `rclone` folders ship in the repo (empty)**. If Docker creates `./data` itself it is owned by root and the container's non-root user cannot write the database (`unable to open database file`). This happened in testing. If you hit it on Linux: `sudo chown -R 1000:1000 data rclone`.
 - **rclone in the image is untested here.** The Dockerfile installs Debian's `rclone` package, but this sandbox could not reach the Debian mirrors to confirm. If `RCLONE_REMOTE` is set and the copy fails, the backup still completes locally and prints a warning.
