@@ -116,7 +116,7 @@ def timeline(request: Request, db: Session = Depends(get_db), user: m.User = Dep
             start = it.planned_start
             end = it.planned_end or (start + timedelta(days=7))
             left = max((start - range_start).days / total_days * 100, 0)
-            width = max((end - start).days / total_days * 100, 1.5)
+            width = min(max((end - start).days / total_days * 100, 1.5), 100 - left)
             gantt_items.append({
                 "item": it,
                 "left": left,

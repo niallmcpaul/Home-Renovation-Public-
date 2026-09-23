@@ -227,7 +227,7 @@ def choose_option(db: Session, actor: Actor, item: m.Item) -> list[m.Item]:
     if not item.decision_group:
         raise ServiceError("Item has no decision_group")
     siblings = list(db.scalars(select(m.Item).where(
-        m.Item.decision_group == item.decision_group, m.Item.id != item.id, m.Item.status != "archived"
+        m.Item.decision_group == item.decision_group, m.Item.id != item.id, m.Item.status.notin_(("archived", "done", "parked"))
     )))
     for sib in siblings:
         update(db, actor, sib, {"status": "parked"})
