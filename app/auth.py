@@ -20,7 +20,10 @@ def hash_password(pw: str) -> str:
 
 
 def locked_out(key: str) -> bool:
-    recent = [t for t in _failures[key] if time.time() - t < WINDOW]
+    recent = [t for t in _failures.get(key, ()) if time.time() - t < WINDOW]
+    if not recent:
+        _failures.pop(key, None)
+        return False
     _failures[key] = recent
     return len(recent) >= MAX_FAILURES and time.time() - recent[-1] < LOCKOUT
 
@@ -29,6 +32,8 @@ def authenticate(db: Session, username: str, password: str, key: str) -> m.User 
     """key identifies the client for rate limiting, e.g. f'{ip}:{username}'. A per-username key also applies,
     since forwarded client IPs can be spoofed or collapse to the proxy address."""
     username = username.strip().lower()
+    if len(username) > 150:  # bounds the in-memory failure table on the public login
+        return None
     keys = (key, f"user:{username}")
     if any(locked_out(k) for k in keys):
         return None
