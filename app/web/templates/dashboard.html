@@ -55,6 +55,9 @@
 {% if proposed %}
 <section class="card">
   <h2>Proposed by Claude</h2>
+  {% if proposed|length > 1 %}
+  <form method="post" action="/inbox/confirm-all" onsubmit="return confirm('Confirm all {{ proposed|length }} proposed items?')"><button type="submit">Confirm all ({{ proposed|length }})</button></form>
+  {% endif %}
   <ul class="list">
     {% for it in proposed %}
     <li>

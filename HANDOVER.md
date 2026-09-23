@@ -28,7 +28,7 @@ export DATA_DIR=./data SECRET_KEY=dev
 | Path | Contents |
 |---|---|
 | `app/models.py` | All tables from PLAN §5, plus OAuth client/code/token tables and an `undone` flag on `activity_log` |
-| `app/services.py` | Every write goes through `create`/`update`/`delete`; each logs to `activity_log`. Cycle-checked `link_items`, `accept_quote`, optimistic-concurrency check, one-step `undo` |
+| `app/services.py` | Every write goes through `create`/`update`/`delete`; each logs to `activity_log`. Cycle-checked `link_items`, `accept_quote`, `choose_option`, optimistic-concurrency check, `undo`. Multi-record actions (accept quote, choose option, confirm all) share a `batch_id` and undo as one step |
 | `app/planning.py` | Derived logic from PLAN §6 (blocked, blocks count, committed/spent/available, next actions, quote nudge, timeline warnings, savings projection) |
 | `app/web/` | Private listener UI: `account.py` (login), `items.py` (dashboard, items, item detail, quotes, uploads, notes), `pages.py` (contractors, timeline + `.ics`, budget/savings, activity + undo, settings) |
 | `app/oauth.py`, `app/mcp_server.py`, `app/public.py` | Public listener: MCP Streamable HTTP at `/mcp` behind OAuth 2.1 (DCR, PKCE, hashed tokens) |
@@ -63,6 +63,13 @@ export DATA_DIR=./data SECRET_KEY=dev
 - **The `data` and `rclone` folders ship in the repo (empty)**. If Docker creates `./data` itself it is owned by root and the container's non-root user cannot write the database (`unable to open database file`). This happened in testing. If you hit it on Linux: `sudo chown -R 1000:1000 data rclone`.
 - **rclone in the image is untested here.** The Dockerfile installs Debian's `rclone` package, but this sandbox could not reach the Debian mirrors to confirm. If `RCLONE_REMOTE` is set and the copy fails, the backup still completes locally and prints a warning.
 - Tests pass on Python 3.11 locally and 3.12 in GitHub Actions.
+
+## Added beyond the plan
+
+- **Grouped undo:** actions that change several records undo together (e.g. "Undo (4 changes)" after accepting a quote). Needs the second Alembic migration (`b7c1d2e3f4a5`); a fresh `init` already includes it.
+- **Confirm all** button on the dashboard's "Proposed by Claude" inbox, for survey imports.
+- **`choose_option`** for decision groups: parks the alternatives. In the web UI and as an MCP tool.
+- MCP `list_items` accepts `source`, and the server instructions tell Claude to check for an earlier import before importing a survey, to avoid duplicates.
 
 ## Review passes run at the end of the sprint
 

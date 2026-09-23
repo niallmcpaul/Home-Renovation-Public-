@@ -265,6 +265,17 @@ def confirm_proposed(item_id: int, user: m.User = Depends(require_user), db: Ses
     return RedirectResponse(with_msg("/", "Confirmed"), status_code=303)
 
 
+@router.post("/inbox/confirm-all")
+def confirm_all_proposed(user: m.User = Depends(require_user), db: Session = Depends(get_db)):
+    a = actor(user)
+    items = db.scalars(select(m.Item).where(m.Item.status == "proposed")).all()
+    with services.batch(a):
+        for item in items:
+            services.update(db, a, item, {"status": "idea"})
+    db.commit()
+    return RedirectResponse(with_msg("/", f"Confirmed {len(items)} item(s)"), status_code=303)
+
+
 @router.post("/items/{item_id}/discard")
 def discard_proposed(item_id: int, user: m.User = Depends(require_user), db: Session = Depends(get_db)):
     item = get_or_404(db, m.Item, item_id)

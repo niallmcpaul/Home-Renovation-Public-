@@ -33,7 +33,8 @@ Survey workflow: when the user shares a building survey, extract defects and rec
 once with all of them: source="survey", source_ref=the survey section (e.g. "D4.2"), category="urgent" where the \
 surveyor flags safety or structural issues, otherwise enabling/improvement as appropriate; include the surveyor's \
 wording in description and any Building Control / specialist requirements in compliance_notes. Items arrive as \
-`proposed` for a human to confirm or discard in the dashboard inbox. Summarise what you created afterwards.
+`proposed` for a human to confirm or discard in the dashboard inbox. First call list_items(source="survey", include_archived=true) to check for items from \
+an earlier import of the same survey, and skip duplicates. Summarise what you created afterwards.
 Before accept_quote, confirm with the user: it declines the item's other open quotes."""
 
 VOCAB = (f"\nstatus: {'|'.join(m.STATUSES)} (proposed = suggested by Claude, awaiting human confirmation in the "
@@ -125,14 +126,15 @@ def _activity(a: m.ActivityLog) -> dict:
 @_safe
 def list_items(status: str | None = None, category: str | None = None, room_id: int | None = None,
                phase_id: int | None = None, size: str | None = None, text: str | None = None,
-               blocked_only: bool = False, include_archived: bool = False, limit: int = 100) -> dict:
-    """List items (compact). Filters: status, category, size (see server vocabularies), room_id, phase_id,
+               blocked_only: bool = False, include_archived: bool = False, limit: int = 100,
+               source: str | None = None) -> dict:
+    """List items (compact). Filters: status, category, size, source (see server vocabularies), room_id, phase_id,
     text (matches title/description), blocked_only (items with an unfinished blocker). Archived items are
     excluded unless status='archived' or include_archived=true."""
     with _session() as db:
         q = select(m.Item)
         for col, val in ((m.Item.status, status), (m.Item.category, category), (m.Item.size, size),
-                         (m.Item.room_id, room_id), (m.Item.phase_id, phase_id)):
+                         (m.Item.room_id, room_id), (m.Item.phase_id, phase_id), (m.Item.source, source)):
             if val is not None:
                 q = q.where(col == val)
         if status is None and not include_archived:
